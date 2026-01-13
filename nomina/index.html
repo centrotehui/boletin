@@ -1302,7 +1302,24 @@ const App = () => {
 
     // Generar Nómina
     const generarNomina = () => {
+        // Validar que no exista una nómina PROCESADA para el mismo período (anuladas sí se permiten)
+        const codigoNuevo = `${periodo.año}${periodo.mes.toString().padStart(2,'0')}${periodo.tipo === 'quincenal' ? periodo.quincena : '0'}`;
+        const existente = nominas.find(n => {
+            const codigoExistente = `${n.periodo.año}${n.periodo.mes.toString().padStart(2,'0')}${n.periodo.tipo === 'quincenal' ? n.periodo.quincena : '0'}`;
+            return codigoExistente === codigoNuevo && (n.estado === 'guardada' || n.estado === 'procesada');
+        });
+        
+        if (existente) {
+            toast(`Ya existe una nómina procesada para este período (Código: ${codigoNuevo}). Debe anularla primero para crear una nueva.`, 'error');
+            return;
+        }
+        
         const activos = empleados.filter(e => e.activo);
+        if (activos.length === 0) {
+            toast('No hay empleados activos para generar la nómina', 'error');
+            return;
+        }
+        
         const divisor = periodo.tipo === 'quincenal' ? 2 : 1;
         const esRegalia = periodo.mes === 12 && (periodo.tipo === 'mensual' || periodo.quincena === 2);
         const edits = {};
@@ -1338,8 +1355,8 @@ const App = () => {
         });
 
         setNominaEdits(edits);
-        setCurrentNomina({ id: Date.now(), periodo: { ...periodo }, fecha: new Date().toISOString(), detalles, estado: 'borrador' });
-        toast('Nómina generada - Ajuste valores antes de guardar', 'success');
+        setCurrentNomina({ id: Date.now(), codigo: codigoNuevo, periodo: { ...periodo }, fecha: new Date().toISOString(), detalles, estado: 'borrador' });
+        toast(`Nómina ${codigoNuevo} generada - Ajuste valores antes de guardar`, 'success');
         setView('nomina');
     };
 
@@ -1393,10 +1410,23 @@ const App = () => {
     const getDetallesRecalc = () => currentNomina ? currentNomina.detalles.map(d => recalcularDetalle(d.empId) || d) : [];
     const updateEdit = (empId, field, val) => setNominaEdits(p => ({ ...p, [empId]: { ...p[empId], [field]: val } }));
 
-    // Guardar nómina
-    const guardarNomina = async () => {
+    // Guardar nómina como borrador (sin procesar)
+    const guardarBorrador = () => {
         const detalles = getDetallesRecalc();
-        const nominaFinal = { ...currentNomina, detalles, estado: 'guardada' };
+        const nominaActualizada = { ...currentNomina, detalles };
+        setCurrentNomina(nominaActualizada);
+        toast('Cambios guardados en borrador', 'info');
+    };
+
+    // Procesar/Cerrar nómina (finalizar)
+    const procesarNomina = async () => {
+        if (!window.confirm('¿Está seguro de PROCESAR esta nómina?\n\nUna vez procesada:\n• Se actualizarán los saldos de préstamos\n• Quedará guardada en el historial\n• Para corregir deberá anularla y crear una nueva')) {
+            return;
+        }
+        
+        const detalles = getDetallesRecalc();
+        const codigo = currentNomina.codigo || `${currentNomina.periodo.año}${currentNomina.periodo.mes.toString().padStart(2,'0')}${currentNomina.periodo.tipo === 'quincenal' ? currentNomina.periodo.quincena : '0'}`;
+        const nominaFinal = { ...currentNomina, codigo, detalles, estado: 'procesada', fechaProceso: new Date().toISOString() };
 
         // Actualizar préstamos
         const prestamosActualizados = [];
@@ -1426,8 +1456,37 @@ const App = () => {
             }
         }
         
-        toast('Nómina guardada correctamente', 'success');
+        toast(`Nómina ${codigo} procesada correctamente`, 'success');
     };
+    
+    // Anular nómina (para poder reprocesar)
+    const anularNomina = async (nomina) => {
+        const motivo = window.prompt('Ingrese el motivo de anulación:');
+        if (!motivo) return;
+        
+        if (!window.confirm(`¿Está seguro de ANULAR la nómina ${nomina.codigo}?\n\nEsto permitirá crear una nueva nómina para el mismo período.`)) {
+            return;
+        }
+        
+        const nominaAnulada = { 
+            ...nomina, 
+            estado: 'anulada', 
+            fechaAnulacion: new Date().toISOString(),
+            motivoAnulacion: motivo 
+        };
+        
+        setNominas(p => p.map(n => n.id === nomina.id ? nominaAnulada : n));
+        
+        // Sincronizar con SharePoint
+        if (spConnected) {
+            await guardarNominaSP(nominaAnulada);
+        }
+        
+        toast(`Nómina ${nomina.codigo} anulada. Puede crear una nueva para este período.`, 'warning');
+    };
+    
+    // Función legacy para compatibilidad
+    const guardarNomina = procesarNomina;
 
     // Liquidación
     const calcularLiquidacionEmp = (emp, motivo = 'despido') => {
@@ -1607,18 +1666,43 @@ const App = () => {
 
         const periodoTxt = currentNomina.periodo.tipo === 'quincenal' ? `Q${currentNomina.periodo.quincena} ${MESES[currentNomina.periodo.mes]} ${currentNomina.periodo.año}` : `${MESES[currentNomina.periodo.mes]} ${currentNomina.periodo.año}`;
         const esBorrador = currentNomina.estado === 'borrador';
+        const esProcesada = currentNomina.estado === 'procesada' || currentNomina.estado === 'guardada';
+        const esAnulada = currentNomina.estado === 'anulada';
+        const codigo = currentNomina.codigo || 'Sin código';
 
         return (
             <div className="card">
                 <div className="card-header">
-                    <span className="card-title"><Icons.FileText /> Nómina: {periodoTxt} {esBorrador && <span className="badge badge-warning" style={{marginLeft:'6px'}}>Borrador</span>}</span>
+                    <span className="card-title">
+                        <Icons.FileText /> Nómina: {periodoTxt} 
+                        <span className="badge badge-info" style={{marginLeft:'8px', fontFamily:'JetBrains Mono'}}>{codigo}</span>
+                        {esBorrador && <span className="badge badge-warning" style={{marginLeft:'6px'}}>Borrador</span>}
+                        {esProcesada && <span className="badge badge-success" style={{marginLeft:'6px'}}>Procesada</span>}
+                        {esAnulada && <span className="badge badge-danger" style={{marginLeft:'6px'}}>Anulada</span>}
+                    </span>
                     <div className="btn-group">
-                        {esBorrador && <button className="btn btn-success" onClick={guardarNomina}><Icons.Save /> Guardar</button>}
-                        {!esBorrador && <><button className="btn btn-info" onClick={() => window.print()}><Icons.Printer /> Imprimir</button><button className="btn btn-purple" onClick={() => { setSelectedVolante(null); openModal('volantes'); }}><Icons.Receipt /> Volantes</button><button className="btn btn-secondary" onClick={exportarExcel}><Icons.Download /> Excel</button></>}
+                        {esBorrador && (
+                            <>
+                                <button className="btn btn-secondary" onClick={guardarBorrador}><Icons.Save /> Guardar Borrador</button>
+                                <button className="btn btn-success" onClick={procesarNomina}><Icons.Check /> Procesar Nómina</button>
+                            </>
+                        )}
+                        {esProcesada && (
+                            <>
+                                <button className="btn btn-info" onClick={() => window.print()}><Icons.Printer /> Imprimir</button>
+                                <button className="btn btn-purple" onClick={() => { setSelectedVolante(null); openModal('volantes'); }}><Icons.Receipt /> Volantes</button>
+                                <button className="btn btn-secondary" onClick={exportarExcel}><Icons.Download /> Excel</button>
+                                <button className="btn btn-danger" onClick={() => anularNomina(currentNomina)}><Icons.X /> Anular</button>
+                            </>
+                        )}
+                        {esAnulada && (
+                            <button className="btn btn-primary" onClick={() => setView('dashboard')}><Icons.Plus /> Crear Nueva</button>
+                        )}
                     </div>
                 </div>
                 <div className="card-body">
-                    {esBorrador && <div className="alert alert-warning"><Icons.AlertCircle /><span>Ajuste ausencias, tardanzas, horas extras y deducciones adicionales. Los cálculos se actualizan automáticamente.</span></div>}
+                    {esBorrador && <div className="alert alert-warning"><Icons.AlertCircle /><span><strong>Nómina en Borrador:</strong> Ajuste ausencias, tardanzas, horas extras y deducciones. Luego presione "Procesar Nómina" para finalizar.</span></div>}
+                    {esAnulada && <div className="alert alert-danger"><Icons.AlertCircle /><span><strong>Nómina Anulada:</strong> {currentNomina.motivoAnulacion || 'Sin motivo especificado'}. Puede crear una nueva nómina para este período desde el Dashboard.</span></div>}
                     
                     <div className="table-wrap">
                         <table>
@@ -1634,7 +1718,7 @@ const App = () => {
                                     <th>Otras</th>
                                     <th>Total Ded.</th>
                                     <th>Neto</th>
-                                    {!esBorrador && <th></th>}
+                                    {esProcesada && <th></th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -1658,7 +1742,7 @@ const App = () => {
                                                 <td className="money">{(d.cooperativa + d.seguroPrivado + d.embargo + d.descAusencias + d.descTardanzas) > 0 ? formatMoney(d.cooperativa + d.seguroPrivado + d.embargo + d.descAusencias + d.descTardanzas) : '-'}</td>
                                                 <td className="money neg">{formatMoney(d.totalDed)}</td>
                                                 <td className="money pos" style={{fontWeight:700}}>{formatMoney(d.neto)}</td>
-                                                {!esBorrador && <td><button className="btn btn-xs btn-secondary" onClick={() => { setSelectedVolante(d.empId); openModal('volantes'); }}><Icons.Eye /></button></td>}
+                                                {esProcesada && <td><button className="btn btn-xs btn-secondary" onClick={() => { setSelectedVolante(d.empId); openModal('volantes'); }}><Icons.Eye /></button></td>}
                                             </tr>
                                         ))}
                                         <tr className="dept-row">
@@ -1672,7 +1756,7 @@ const App = () => {
                                             <td></td>
                                             <td className="money">{formatMoney(dets.reduce((s,d)=>s+d.totalDed,0))}</td>
                                             <td className="money">{formatMoney(dets.reduce((s,d)=>s+d.neto,0))}</td>
-                                            {!esBorrador && <td></td>}
+                                            {esProcesada && <td></td>}
                                         </tr>
                                     </React.Fragment>
                                 ))}
@@ -1776,28 +1860,129 @@ const App = () => {
         </div>
     );
 
+    // Estados para filtros del historial
+    const [historialFiltro, setHistorialFiltro] = useState({ año: 'TODOS', departamento: 'TODOS' });
+    
+    // Generar código único de nómina (formato: YYYYMMQQ o YYYYMM)
+    const generarCodigoNomina = (periodo) => {
+        const año = periodo.año.toString();
+        const mes = periodo.mes.toString().padStart(2, '0');
+        const quincena = periodo.tipo === 'quincenal' ? periodo.quincena.toString() : '0';
+        return `${año}${mes}${quincena}`;
+    };
+    
+    // Calcular fechas del período
+    const getFechasPeriodo = (periodo) => {
+        const año = periodo.año;
+        const mes = periodo.mes;
+        const ultimoDia = new Date(año, mes, 0).getDate();
+        
+        if (periodo.tipo === 'quincenal') {
+            if (periodo.quincena === 1) {
+                return { inicio: `01/${mes.toString().padStart(2,'0')}/${año}`, fin: `15/${mes.toString().padStart(2,'0')}/${año}` };
+            } else {
+                return { inicio: `16/${mes.toString().padStart(2,'0')}/${año}`, fin: `${ultimoDia}/${mes.toString().padStart(2,'0')}/${año}` };
+            }
+        } else {
+            return { inicio: `01/${mes.toString().padStart(2,'0')}/${año}`, fin: `${ultimoDia}/${mes.toString().padStart(2,'0')}/${año}` };
+        }
+    };
+    
+    // Filtrar nóminas del historial
+    const nominasFiltradas = useMemo(() => {
+        return nominas.filter(n => {
+            const matchAño = historialFiltro.año === 'TODOS' || n.periodo.año.toString() === historialFiltro.año;
+            return matchAño;
+        }).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    }, [nominas, historialFiltro]);
+    
     const renderHistorial = () => (
         <div className="card">
-            <div className="card-header"><span className="card-title"><Icons.Clock /> Historial de Nóminas</span></div>
+            <div className="card-header">
+                <span className="card-title"><Icons.Clock /> Historial de Nóminas</span>
+                <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                    <select className="form-control sm" style={{width:'100px'}} value={historialFiltro.año} onChange={e => setHistorialFiltro(f => ({...f, año: e.target.value}))}>
+                        <option value="TODOS">Todos</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                    </select>
+                    <span style={{fontSize:'10px', color:'var(--text-muted)'}}>{nominasFiltradas.length} nóminas</span>
+                </div>
+            </div>
             <div className="card-body">
-                {nominas.length === 0 ? <div className="empty"><Icons.Clock /><h3>Sin historial</h3><p>Las nóminas guardadas aparecerán aquí</p></div> : (
+                {nominasFiltradas.length === 0 ? (
+                    <div className="empty"><Icons.Clock /><h3>Sin historial</h3><p>Las nóminas guardadas aparecerán aquí</p></div>
+                ) : (
                     <div className="table-wrap">
                         <table>
-                            <thead><tr><th>Período</th><th>Fecha</th><th>Empleados</th><th>Total Ded.</th><th>Total Neto</th><th>Estado</th><th>Acciones</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Fecha Inicial</th>
+                                    <th>Fecha Final</th>
+                                    <th>Tipo</th>
+                                    <th>Empleados</th>
+                                    <th>Total Bruto</th>
+                                    <th>Total Ded.</th>
+                                    <th>Total Neto</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                {nominas.map(n => (
-                                    <tr key={n.id}>
-                                        <td>{n.periodo.tipo === 'quincenal' ? `Q${n.periodo.quincena} ` : ''}{MESES[n.periodo.mes]} {n.periodo.año}</td>
-                                        <td>{formatDate(n.fecha)}</td>
-                                        <td>{n.detalles.length}</td>
-                                        <td className="money neg">RD$ {formatMoney(n.detalles.reduce((s,d) => s + d.totalDed, 0))}</td>
-                                        <td className="money pos">RD$ {formatMoney(n.detalles.reduce((s,d) => s + d.neto, 0))}</td>
-                                        <td><span className={`badge ${n.estado === 'guardada' ? 'badge-success' : 'badge-warning'}`}>{n.estado === 'guardada' ? 'Guardada' : 'Borrador'}</span></td>
-                                        <td><div className="btn-group"><button className="btn btn-xs btn-secondary" onClick={() => { setCurrentNomina(n); setView('nomina'); }}>Ver</button>{n.estado === 'guardada' && <button className="btn btn-xs btn-purple" onClick={() => { setCurrentNomina(n); setSelectedVolante(null); openModal('volantes'); }}><Icons.Receipt /></button>}</div></td>
-                                    </tr>
-                                ))}
+                                {nominasFiltradas.map(n => {
+                                    const codigo = n.codigo || generarCodigoNomina(n.periodo);
+                                    const fechas = getFechasPeriodo(n.periodo);
+                                    const totalBruto = n.detalles.reduce((s,d) => s + d.totalIng, 0);
+                                    const totalDed = n.detalles.reduce((s,d) => s + d.totalDed, 0);
+                                    const totalNeto = n.detalles.reduce((s,d) => s + d.neto, 0);
+                                    const esProcesada = n.estado === 'procesada' || n.estado === 'guardada';
+                                    const esAnulada = n.estado === 'anulada';
+                                    return (
+                                        <tr key={n.id} style={esAnulada ? {opacity: 0.6, textDecoration: 'line-through'} : {}}>
+                                            <td><span className="badge badge-info" style={{fontFamily:'JetBrains Mono', fontSize:'10px'}}>{codigo}</span></td>
+                                            <td style={{fontFamily:'JetBrains Mono', fontSize:'10px'}}>{fechas.inicio}</td>
+                                            <td style={{fontFamily:'JetBrains Mono', fontSize:'10px'}}>{fechas.fin}</td>
+                                            <td><span className={`badge ${n.periodo.tipo === 'quincenal' ? 'badge-purple' : 'badge-info'}`} style={{fontSize:'9px'}}>{n.periodo.tipo === 'quincenal' ? `Q${n.periodo.quincena}` : 'Mensual'}</span></td>
+                                            <td style={{textAlign:'center'}}>{n.detalles.length}</td>
+                                            <td className="money">RD$ {formatMoney(totalBruto)}</td>
+                                            <td className="money neg">RD$ {formatMoney(totalDed)}</td>
+                                            <td className="money pos" style={{fontWeight:700}}>RD$ {formatMoney(totalNeto)}</td>
+                                            <td>
+                                                <span className={`badge ${esProcesada ? 'badge-success' : esAnulada ? 'badge-danger' : 'badge-warning'}`}>
+                                                    {esProcesada ? 'Procesada' : esAnulada ? 'Anulada' : 'Borrador'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="btn-group">
+                                                    <button className="btn btn-xs btn-secondary" title="Ver detalle" onClick={() => { setCurrentNomina(n); setView('nomina'); }}><Icons.Eye /></button>
+                                                    {esProcesada && (
+                                                        <>
+                                                            <button className="btn btn-xs btn-purple" title="Volantes" onClick={() => { setCurrentNomina(n); setSelectedVolante(null); openModal('volantes'); }}><Icons.Receipt /></button>
+                                                            <button className="btn btn-xs btn-info" title="Imprimir" onClick={() => { setCurrentNomina(n); setTimeout(() => window.print(), 100); }}><Icons.Printer /></button>
+                                                            <button className="btn btn-xs btn-danger" title="Anular" onClick={() => anularNomina(n)}><Icons.X /></button>
+                                                        </>
+                                                    )}
+                                                    {esAnulada && (
+                                                        <span style={{fontSize:'9px', color:'var(--text-muted)', marginLeft:'4px'}} title={n.motivoAnulacion}>Anulada</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
+                        {/* Resumen */}
+                        <div style={{marginTop:'16px', padding:'12px', background:'var(--bg-main)', borderRadius:'8px'}}>
+                            <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'16px', textAlign:'center'}}>
+                                <div><div style={{fontSize:'10px', color:'var(--text-secondary)', marginBottom:'4px'}}>NÓMINAS</div><div style={{fontSize:'18px', fontWeight:'700'}}>{nominasFiltradas.length}</div></div>
+                                <div><div style={{fontSize:'10px', color:'var(--text-secondary)', marginBottom:'4px'}}>TOTAL BRUTO</div><div style={{fontSize:'14px', fontWeight:'700', fontFamily:'JetBrains Mono'}}>RD$ {formatMoney(nominasFiltradas.reduce((s,n) => s + n.detalles.reduce((ss,d) => ss + d.totalIng, 0), 0))}</div></div>
+                                <div><div style={{fontSize:'10px', color:'var(--text-secondary)', marginBottom:'4px'}}>TOTAL DEDUCCIONES</div><div style={{fontSize:'14px', fontWeight:'700', fontFamily:'JetBrains Mono', color:'var(--danger)'}}>RD$ {formatMoney(nominasFiltradas.reduce((s,n) => s + n.detalles.reduce((ss,d) => ss + d.totalDed, 0), 0))}</div></div>
+                                <div><div style={{fontSize:'10px', color:'var(--text-secondary)', marginBottom:'4px'}}>TOTAL NETO PAGADO</div><div style={{fontSize:'14px', fontWeight:'700', fontFamily:'JetBrains Mono', color:'var(--success)'}}>RD$ {formatMoney(nominasFiltradas.reduce((s,n) => s + n.detalles.reduce((ss,d) => ss + d.neto, 0), 0))}</div></div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
