@@ -1214,6 +1214,7 @@ const App = () => {
     const empFormInit = { nombre: '', tipoDocumento: 'cedula', documento: '', nss: '', departamento: 'DOCENTE', cargo: '', salarioBase: '', tipoRemuneracion: 'Normal', fechaIngreso: '', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 };
     const [empForm, setEmpForm] = useState(empFormInit);
     const [prestamoForm, setPrestamoForm] = useState({ empleadoId: '', monto: '', cuotas: '', desc: '', fecha: '' });
+    const [editingPrestamo, setEditingPrestamo] = useState(null);
     const [licenciaForm, setLicenciaForm] = useState({ empleadoId: '', tipo: 'Vacaciones', fechaInicio: '', fechaFin: '', conPago: true, notas: '' });
     const [periodo, setPeriodo] = useState({ tipo: 'quincenal', mes: new Date().getMonth() + 1, año: new Date().getFullYear(), quincena: new Date().getDate() <= 15 ? 1 : 2 });
     const [liquidacionData, setLiquidacionData] = useState(null);
@@ -1581,16 +1582,61 @@ const App = () => {
         if (!prestamoForm.empleadoId || !prestamoForm.monto || !prestamoForm.cuotas) { toast('Complete los campos', 'error'); return; }
         const monto = parseFloat(prestamoForm.monto);
         const cuotas = parseInt(prestamoForm.cuotas);
-        const nuevoPrestamo = {
-            id: Date.now(), empleadoId: parseInt(prestamoForm.empleadoId), monto, cuotas, cuotasPagadas: 0,
-            cuotaMensual: round2(monto / cuotas), saldo: monto, desc: prestamoForm.desc || 'Préstamo',
-            fecha: prestamoForm.fecha || new Date().toISOString().split('T')[0], activo: true
-        };
-        setPrestamos(p => [...p, nuevoPrestamo]);
-        if (spConnected) await guardarPrestamoSP(nuevoPrestamo);
-        toast('Préstamo registrado', 'success');
+        
+        if (editingPrestamo) {
+            // Actualizar préstamo existente
+            const cuotasPagadas = editingPrestamo.cuotasPagadas || 0;
+            const cuotaMensual = round2(monto / cuotas);
+            const saldoPagado = cuotasPagadas * (editingPrestamo.cuotaMensual || 0);
+            const nuevoSaldo = Math.max(0, monto - saldoPagado);
+            
+            const updated = {
+                ...editingPrestamo,
+                empleadoId: parseInt(prestamoForm.empleadoId),
+                monto,
+                cuotas,
+                cuotaMensual,
+                saldo: nuevoSaldo,
+                desc: prestamoForm.desc || 'Préstamo',
+                fecha: prestamoForm.fecha || editingPrestamo.fecha,
+                activo: nuevoSaldo > 0
+            };
+            setPrestamos(p => p.map(pr => pr.id === editingPrestamo.id ? updated : pr));
+            toast('Préstamo actualizado', 'success');
+        } else {
+            // Crear nuevo préstamo
+            const nuevoPrestamo = {
+                id: Date.now(), empleadoId: parseInt(prestamoForm.empleadoId), monto, cuotas, cuotasPagadas: 0,
+                cuotaMensual: round2(monto / cuotas), saldo: monto, desc: prestamoForm.desc || 'Préstamo',
+                fecha: prestamoForm.fecha || new Date().toISOString().split('T')[0], activo: true
+            };
+            setPrestamos(p => [...p, nuevoPrestamo]);
+            if (spConnected) await guardarPrestamoSP(nuevoPrestamo);
+            toast('Préstamo registrado', 'success');
+        }
         closeModal('prestamo');
+        setEditingPrestamo(null);
         setPrestamoForm({ empleadoId: '', monto: '', cuotas: '', desc: '', fecha: '' });
+    };
+    
+    const editarPrestamo = (prestamo) => {
+        setEditingPrestamo(prestamo);
+        setPrestamoForm({
+            empleadoId: prestamo.empleadoId.toString(),
+            monto: prestamo.monto.toString(),
+            cuotas: prestamo.cuotas.toString(),
+            desc: prestamo.desc || '',
+            fecha: prestamo.fecha || ''
+        });
+        openModal('prestamo');
+    };
+    
+    const eliminarPrestamo = (prestamo) => {
+        const emp = empleados.find(e => e.id === prestamo.empleadoId);
+        if (window.confirm(`¿Eliminar el préstamo de ${emp?.nombre || 'este empleado'}?\n\nMonto: RD$ ${formatMoney(prestamo.monto)}\nSaldo pendiente: RD$ ${formatMoney(prestamo.saldo)}`)) {
+            setPrestamos(p => p.filter(pr => pr.id !== prestamo.id));
+            toast('Préstamo eliminado', 'success');
+        }
     };
 
     // CRUD Licencias
@@ -2238,7 +2284,7 @@ const App = () => {
                 {prestamos.length === 0 ? <div className="empty"><Icons.CreditCard /><h3>Sin préstamos</h3></div> : (
                     <div className="table-wrap">
                         <table>
-                            <thead><tr><th>Empleado</th><th>Descripción</th><th>Monto</th><th>Cuota</th><th>Progreso</th><th>Saldo</th><th>Estado</th></tr></thead>
+                            <thead><tr><th>Empleado</th><th>Descripción</th><th>Monto</th><th>Cuota</th><th>Progreso</th><th>Saldo</th><th>Estado</th><th>Acciones</th></tr></thead>
                             <tbody>
                                 {prestamos.map(p => {
                                     const emp = empleados.find(e => e.id === p.empleadoId);
@@ -2251,6 +2297,12 @@ const App = () => {
                                             <td style={{minWidth:'100px'}}><div style={{display:'flex',alignItems:'center',gap:'6px'}}><div className="progress" style={{flex:1}}><div className="progress-bar" style={{width:`${(p.cuotasPagadas/p.cuotas)*100}%`}}></div></div><span style={{fontSize:'9px'}}>{p.cuotasPagadas}/{p.cuotas}</span></div></td>
                                             <td className="money" style={{fontWeight:700}}>RD$ {formatMoney(p.saldo)}</td>
                                             <td><span className={`badge ${p.activo && p.saldo > 0 ? 'badge-warning' : 'badge-success'}`}>{p.activo && p.saldo > 0 ? 'Activo' : 'Pagado'}</span></td>
+                                            <td>
+                                                <div style={{display:'flex', gap:'4px'}}>
+                                                    <button className="btn btn-sm" onClick={() => editarPrestamo(p)} title="Editar" disabled={!esAdmin}><Icons.Edit /></button>
+                                                    <button className="btn btn-sm btn-danger" onClick={() => eliminarPrestamo(p)} title="Eliminar" disabled={!esAdmin}><Icons.Trash /></button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -2906,12 +2958,13 @@ const App = () => {
             </Modal>
 
             {/* Modal Préstamo */}
-            <Modal open={modals.prestamo} onClose={() => { closeModal('prestamo'); setPrestamoForm({empleadoId:'',monto:'',cuotas:'',desc:'',fecha:''}); }} title="Nuevo Préstamo" footer={<><button className="btn btn-secondary" onClick={() => closeModal('prestamo')}>Cancelar</button><button className="btn btn-purple" onClick={guardarPrestamo}><Icons.Check /> Registrar</button></>}>
+            <Modal open={modals.prestamo} onClose={() => { closeModal('prestamo'); setEditingPrestamo(null); setPrestamoForm({empleadoId:'',monto:'',cuotas:'',desc:'',fecha:''}); }} title={editingPrestamo ? 'Editar Préstamo' : 'Nuevo Préstamo'} footer={<><button className="btn btn-secondary" onClick={() => closeModal('prestamo')}>Cancelar</button><button className="btn btn-purple" onClick={guardarPrestamo}><Icons.Check /> {editingPrestamo ? 'Actualizar' : 'Registrar'}</button></>}>
                 <div className="form-grid form-grid-2">
                     <div className="form-group full"><label className="form-label">Empleado *</label><select className="form-control" value={prestamoForm.empleadoId} onChange={e => setPrestamoForm(f => ({...f, empleadoId: e.target.value}))}><option value="">Seleccionar...</option>{empleados.filter(e => e.activo).map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}</select></div>
                     <div className="form-group"><label className="form-label">Monto Total *</label><input className="form-control" type="number" value={prestamoForm.monto} onChange={e => setPrestamoForm(f => ({...f, monto: e.target.value}))} /></div>
                     <div className="form-group"><label className="form-label">Cuotas *</label><input className="form-control" type="number" min="1" value={prestamoForm.cuotas} onChange={e => setPrestamoForm(f => ({...f, cuotas: e.target.value}))} /></div>
                     {prestamoForm.monto && prestamoForm.cuotas && <div className="form-group full"><div className="alert alert-success"><Icons.Info /><span>Cuota mensual: <strong>RD$ {formatMoney(+prestamoForm.monto / +prestamoForm.cuotas)}</strong></span></div></div>}
+                    {editingPrestamo && editingPrestamo.cuotasPagadas > 0 && <div className="form-group full"><div className="alert alert-warning"><Icons.Info /><span>Ya se han pagado <strong>{editingPrestamo.cuotasPagadas} cuotas</strong>. El saldo se recalculará automáticamente.</span></div></div>}
                     <div className="form-group"><label className="form-label">Fecha Inicio</label><input className="form-control" type="date" value={prestamoForm.fecha} onChange={e => setPrestamoForm(f => ({...f, fecha: e.target.value}))} /></div>
                     <div className="form-group"><label className="form-label">Descripción</label><input className="form-control" value={prestamoForm.desc} onChange={e => setPrestamoForm(f => ({...f, desc: e.target.value}))} placeholder="Préstamo personal..." /></div>
                 </div>
