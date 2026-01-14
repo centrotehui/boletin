@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Nómina Tehui v3.0 - Profesional RD</title>
+    <title>Sistema de Nómina Tehui v3.1 - Profesional RD</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -760,7 +760,8 @@ const CONFIG_DEFAULT = {
         afpEmpleado: 2.87, sfsEmpleado: 3.04,
         afpEmpleador: 7.10, sfsEmpleador: 7.09,
         infotep: 1.00, riesgoLaboral: 1.20,
-        topeAfp: 485070, topeSfs: 485070
+        topeAfp: 485070, topeSfs: 485070,
+        pdssPerCapita: 1100  // RD$ 1,100 mensual por dependiente adicional en SFS
     },
     isr: [
         { min: 0, max: 416220, tasa: 0, fijo: 0 },
@@ -789,10 +790,13 @@ const CONFIG_DEFAULT = {
     }
 };
 
-const DEPARTAMENTOS = ['ADMINISTRACION', 'ASISTENTE', 'DOCENTE', 'MAESTRA INTEGRADORA', 'PROFESOR', 'PSICOLOGIA', 'MANTENIMIENTO', 'COCINA', 'TRANSPORTE', 'SEGURIDAD'];
-const BANCOS = ['Banco Popular Dominicano', 'BHD León', 'Banreservas', 'Scotiabank', 'Banco Santa Cruz', 'Banco Promerica', 'Asociación Popular', 'Banco BDI', 'Banco Caribe', 'Banco Vimenca'];
-const TIPOS_CONTRATO = ['Indefinido', 'Temporal', 'Por Obra', 'Pasantía', 'Prueba'];
-const TIPOS_LICENCIA = ['Maternidad', 'Paternidad', 'Médica', 'Sin Sueldo', 'Duelo', 'Matrimonio', 'Vacaciones'];
+// Valores predeterminados para configuración (se pueden modificar en Mantenimiento)
+const DEPARTAMENTOS_DEFAULT = ['ADMINISTRACION', 'ASISTENTE', 'DOCENTE', 'MAESTRA INTEGRADORA', 'PROFESOR', 'PSICOLOGIA', 'MANTENIMIENTO', 'COCINA', 'TRANSPORTE', 'SEGURIDAD'];
+const BANCOS_DEFAULT = ['Banco Popular Dominicano', 'BHD León', 'Banreservas', 'Scotiabank', 'Banco Santa Cruz', 'Banco Promerica', 'Asociación Popular', 'Banco BDI', 'Banco Caribe', 'Banco Vimenca'];
+const TIPOS_CONTRATO_DEFAULT = ['Indefinido', 'Temporal', 'Por Obra', 'Pasantía', 'Prueba'];
+const TIPOS_LICENCIA_DEFAULT = ['Maternidad', 'Paternidad', 'Médica', 'Sin Sueldo', 'Duelo', 'Matrimonio', 'Vacaciones'];
+const TIPOS_REMUNERACION_DEFAULT = ['Normal', 'Trabajador ocasional (no fijo)', 'Asalariado por hora/día/semana'];
+const CARGOS_DEFAULT = ['Docente', 'Asistente', 'Administrativa', 'Psicóloga', 'Mantenimiento', 'Representante', 'Coordinador', 'Director', 'Secretaria', 'Conserje'];
 const MESES = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 // =====================================================
@@ -829,6 +833,7 @@ const calcularTSS = (salario, config) => {
 };
 
 const calcularISR = (salarioAnualNeto, config) => {
+    // En RD los dependientes NO afectan el ISR
     for (const t of config.isr) {
         if (salarioAnualNeto >= t.min && salarioAnualNeto <= t.max) {
             if (t.tasa === 0) return 0;
@@ -948,6 +953,8 @@ const Icons = {
     Refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
     LogIn: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10,17 15,12 10,7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>,
     LogOut: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+    Database: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>,
+    Tool: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
 };
 
 // =====================================================
@@ -1066,6 +1073,27 @@ const App = () => {
     const [loading, setLoading] = useState(false);
     const [toasts, setToasts] = useState([]);
     
+    // Estados de Configuración del Sistema (Mantenimiento)
+    const [catalogos, setCatalogos] = useState({
+        departamentos: DEPARTAMENTOS_DEFAULT,
+        bancos: BANCOS_DEFAULT,
+        tiposContrato: TIPOS_CONTRATO_DEFAULT,
+        tiposLicencia: TIPOS_LICENCIA_DEFAULT,
+        tiposRemuneracion: TIPOS_REMUNERACION_DEFAULT,
+        cargos: CARGOS_DEFAULT
+    });
+    const [catalogoActivo, setCatalogoActivo] = useState('departamentos');
+    const [nuevoItem, setNuevoItem] = useState('');
+    const [editandoItem, setEditandoItem] = useState(null);
+    
+    // Accesos rápidos a catálogos
+    const DEPARTAMENTOS = catalogos.departamentos;
+    const BANCOS = catalogos.bancos;
+    const TIPOS_CONTRATO = catalogos.tiposContrato;
+    const TIPOS_LICENCIA = catalogos.tiposLicencia;
+    const TIPOS_REMUNERACION = catalogos.tiposRemuneracion;
+    const CARGOS = catalogos.cargos;
+    
     // Estados SharePoint
     const [msUser, setMsUser] = useState(null);
     const [syncStatus, setSyncStatus] = useState({ syncing: false, lastSync: null, error: null });
@@ -1081,8 +1109,7 @@ const App = () => {
     const [selectedVolante, setSelectedVolante] = useState(null);
     
     // Forms
-    const empFormInit = { nombre: '', tipoDocumento: 'cedula', documento: '', nss: '', departamento: 'DOCENTE', cargo: '', salarioBase: '', tipoRemuneracion: 'Normal', fechaIngreso: '', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 };
-    const TIPOS_REMUNERACION = ['Normal', 'Trabajador ocasional (no fijo)', 'Asalariado por hora/día/semana'];
+    const empFormInit = { nombre: '', tipoDocumento: 'cedula', documento: '', nss: '', departamento: 'DOCENTE', cargo: '', salarioBase: '', tipoRemuneracion: 'Normal', fechaIngreso: '', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 };
     const [empForm, setEmpForm] = useState(empFormInit);
     const [prestamoForm, setPrestamoForm] = useState({ empleadoId: '', monto: '', cuotas: '', desc: '', fecha: '' });
     const [licenciaForm, setLicenciaForm] = useState({ empleadoId: '', tipo: 'Vacaciones', fechaInicio: '', fechaFin: '', conPago: true, notas: '' });
@@ -1206,31 +1233,31 @@ const App = () => {
         setLoading(true);
         setTimeout(() => {
             const emps = [
-                { id: 1, nombre: 'Carreño Leon, Maria De Jesús', tipoDocumento: 'cedula', documento: '881-9021577-1', nss: '19021577-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 18000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-05-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 2, nombre: 'Castillo Matta, Zeneida', tipoDocumento: 'cedula', documento: '031-0175106-7', nss: '03715559-5', departamento: 'ASISTENTE', cargo: 'Asistente', salarioBase: 6500, tipoRemuneracion: 'Trabajador ocasional (no fijo)', fechaIngreso: '2024-03-06', tipoContrato: 'Temporal', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 3, nombre: 'Fuentes De Garcia, Cary Roxana', tipoDocumento: 'cedula', documento: '881-8396764-2', nss: '18396764-2', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 20000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 4, nombre: 'Garcia Fuentes, Roxana Josefina', tipoDocumento: 'pasaporte', documento: '0104587395', nss: '', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-08-05', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 5, nombre: 'Hernandez Cabrera, Ramona Altagracia', tipoDocumento: 'cedula', documento: '094-0020547-3', nss: '05699203-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 20000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-10-03', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 6, nombre: 'Jimaquen Garcia, Lucelis Beatriz', tipoDocumento: 'cedula', documento: '402-3169217-5', nss: '18621595-0', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 19000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-08-05', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 7, nombre: 'Jimenez Cuevas, Ingrid Ivelisse', tipoDocumento: 'cedula', documento: '224-0007033-4', nss: '05571827-1', departamento: 'ASISTENTE', cargo: 'Asistente', salarioBase: 15000, tipoRemuneracion: 'Asalariado por hora/día/semana', fechaIngreso: '2025-10-29', tipoContrato: 'Por obra', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 8, nombre: 'Jimenez Tavarez, Javier Arturo', tipoDocumento: 'cedula', documento: '031-0243772-4', nss: '03503956-2', departamento: 'MANTENIMIENTO', cargo: 'Mantenimiento', salarioBase: 10000, tipoRemuneracion: 'Trabajador ocasional (no fijo)', fechaIngreso: '2024-03-06', tipoContrato: 'Temporal', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 9, nombre: 'Lucena Villalobos, Yusmary Chiquinquira', tipoDocumento: 'cedula', documento: '881-8217801-7', nss: '18217801-7', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 19000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 10, nombre: 'Medina, Melissa', tipoDocumento: 'cedula', documento: '039-0024840-6', nss: '07527950-2', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 18000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-11-11', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 11, nombre: 'Mencia Mencia, Alba Iris', tipoDocumento: 'cedula', documento: '402-2237446-0', nss: '07683312-7', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-09-22', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 12, nombre: 'Millan, Diorelys Del Valle', tipoDocumento: 'pasaporte', documento: '54868674', nss: '', departamento: 'ASISTENTE', cargo: 'Asistente', salarioBase: 18000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-10-03', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 13, nombre: 'Nuñez Sosa, Denzel Gabriel', tipoDocumento: 'cedula', documento: '402-1000810-4', nss: '07395851-2', departamento: 'MANTENIMIENTO', cargo: 'Mantenimiento', salarioBase: 11428.47, tipoRemuneracion: 'Asalariado por hora/día/semana', fechaIngreso: '2025-09-02', tipoContrato: 'Por obra', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 14, nombre: 'Paulino Paulino, Gabriela', tipoDocumento: 'cedula', documento: '402-0961340-1', nss: '17867486-3', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 15, nombre: 'Peralta Mendoza, Daniela', tipoDocumento: 'cedula', documento: '402-1922127-8', nss: '09098043-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 16, nombre: 'Perez Ramos, Valerin Mariel', tipoDocumento: 'cedula', documento: '402-2631749-9', nss: '16110843-2', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 18000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 17, nombre: 'Pichardo Quezada, Ana Rosa', tipoDocumento: 'cedula', documento: '031-0343936-4', nss: '03632048-7', departamento: 'ADMINISTRACION', cargo: 'Administrativa', salarioBase: 10000, tipoRemuneracion: 'Trabajador ocasional (no fijo)', fechaIngreso: '2026-01-07', tipoContrato: 'Temporal', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 18, nombre: 'Ramos Santana, Emely Altagracia', tipoDocumento: 'cedula', documento: '402-1546613-3', nss: '17399380-7', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 19, nombre: 'Ramos Santana, Yudelca Altagracia', tipoDocumento: 'cedula', documento: '032-0031709-1', nss: '03713540-7', departamento: 'ADMINISTRACION', cargo: 'Administrativa', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 20, nombre: 'Rodriguez Reyes, Daniela Isabel', tipoDocumento: 'cedula', documento: '402-1106253-0', nss: '06687131-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2025-10-09', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 21, nombre: 'Rodriguez Rodriguez, Gabriel De Jesus', tipoDocumento: 'cedula', documento: '031-0073915-4', nss: '03657548-3', departamento: 'ADMINISTRACION', cargo: 'Representante', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-07-17', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 22, nombre: 'Rosario Vasquez, Luisa Estebania', tipoDocumento: 'cedula', documento: '402-2280604-0', nss: '13781314-0', departamento: 'PSICOLOGIA', cargo: 'Psicóloga', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-11-01', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 23, nombre: 'Sanchez De Colmenares, Flor Maria', tipoDocumento: 'cedula', documento: '881-8543727-7', nss: '18543727-7', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 24, nombre: 'Tavarez Felipe, Yubelkys Altagracia', tipoDocumento: 'cedula', documento: '031-0410964-4', nss: '03679280-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-09-23', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
-                { id: 25, nombre: 'Vivas Cuencas, Lisbia Coromoto', tipoDocumento: 'cedula', documento: '881-8270308-0', nss: '18270308-0', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-10-08', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, pdss: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 1, nombre: 'Carreño Leon, Maria De Jesús', tipoDocumento: 'cedula', documento: '881-9021577-1', nss: '19021577-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 18000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-05-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 2, nombre: 'Castillo Matta, Zeneida', tipoDocumento: 'cedula', documento: '031-0175106-7', nss: '03715559-5', departamento: 'ASISTENTE', cargo: 'Asistente', salarioBase: 6500, tipoRemuneracion: 'Trabajador ocasional (no fijo)', fechaIngreso: '2024-03-06', tipoContrato: 'Temporal', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 3, nombre: 'Fuentes De Garcia, Cary Roxana', tipoDocumento: 'cedula', documento: '881-8396764-2', nss: '18396764-2', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 20000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 4, nombre: 'Garcia Fuentes, Roxana Josefina', tipoDocumento: 'pasaporte', documento: '0104587395', nss: '', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-08-05', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 5, nombre: 'Hernandez Cabrera, Ramona Altagracia', tipoDocumento: 'cedula', documento: '094-0020547-3', nss: '05699203-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 20000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-10-03', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 6, nombre: 'Jimaquen Garcia, Lucelis Beatriz', tipoDocumento: 'cedula', documento: '402-3169217-5', nss: '18621595-0', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 19000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-08-05', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 7, nombre: 'Jimenez Cuevas, Ingrid Ivelisse', tipoDocumento: 'cedula', documento: '224-0007033-4', nss: '05571827-1', departamento: 'ASISTENTE', cargo: 'Asistente', salarioBase: 15000, tipoRemuneracion: 'Asalariado por hora/día/semana', fechaIngreso: '2025-10-29', tipoContrato: 'Por obra', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 8, nombre: 'Jimenez Tavarez, Javier Arturo', tipoDocumento: 'cedula', documento: '031-0243772-4', nss: '03503956-2', departamento: 'MANTENIMIENTO', cargo: 'Mantenimiento', salarioBase: 10000, tipoRemuneracion: 'Trabajador ocasional (no fijo)', fechaIngreso: '2024-03-06', tipoContrato: 'Temporal', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 9, nombre: 'Lucena Villalobos, Yusmary Chiquinquira', tipoDocumento: 'cedula', documento: '881-8217801-7', nss: '18217801-7', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 19000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 10, nombre: 'Medina, Melissa', tipoDocumento: 'cedula', documento: '039-0024840-6', nss: '07527950-2', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 18000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-11-11', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 11, nombre: 'Mencia Mencia, Alba Iris', tipoDocumento: 'cedula', documento: '402-2237446-0', nss: '07683312-7', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-09-22', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 12, nombre: 'Millan, Diorelys Del Valle', tipoDocumento: 'pasaporte', documento: '54868674', nss: '', departamento: 'ASISTENTE', cargo: 'Asistente', salarioBase: 18000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-10-03', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 13, nombre: 'Nuñez Sosa, Denzel Gabriel', tipoDocumento: 'cedula', documento: '402-1000810-4', nss: '07395851-2', departamento: 'MANTENIMIENTO', cargo: 'Mantenimiento', salarioBase: 11428.47, tipoRemuneracion: 'Asalariado por hora/día/semana', fechaIngreso: '2025-09-02', tipoContrato: 'Por obra', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 14, nombre: 'Paulino Paulino, Gabriela', tipoDocumento: 'cedula', documento: '402-0961340-1', nss: '17867486-3', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 15, nombre: 'Peralta Mendoza, Daniela', tipoDocumento: 'cedula', documento: '402-1922127-8', nss: '09098043-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 16, nombre: 'Perez Ramos, Valerin Mariel', tipoDocumento: 'cedula', documento: '402-2631749-9', nss: '16110843-2', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 18000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 17, nombre: 'Pichardo Quezada, Ana Rosa', tipoDocumento: 'cedula', documento: '031-0343936-4', nss: '03632048-7', departamento: 'ADMINISTRACION', cargo: 'Administrativa', salarioBase: 10000, tipoRemuneracion: 'Trabajador ocasional (no fijo)', fechaIngreso: '2026-01-07', tipoContrato: 'Temporal', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 18, nombre: 'Ramos Santana, Emely Altagracia', tipoDocumento: 'cedula', documento: '402-1546613-3', nss: '17399380-7', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 19, nombre: 'Ramos Santana, Yudelca Altagracia', tipoDocumento: 'cedula', documento: '032-0031709-1', nss: '03713540-7', departamento: 'ADMINISTRACION', cargo: 'Administrativa', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 20, nombre: 'Rodriguez Reyes, Daniela Isabel', tipoDocumento: 'cedula', documento: '402-1106253-0', nss: '06687131-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2025-10-09', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 21, nombre: 'Rodriguez Rodriguez, Gabriel De Jesus', tipoDocumento: 'cedula', documento: '031-0073915-4', nss: '03657548-3', departamento: 'ADMINISTRACION', cargo: 'Representante', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-07-17', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 22, nombre: 'Rosario Vasquez, Luisa Estebania', tipoDocumento: 'cedula', documento: '402-2280604-0', nss: '13781314-0', departamento: 'PSICOLOGIA', cargo: 'Psicóloga', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2025-11-01', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 23, nombre: 'Sanchez De Colmenares, Flor Maria', tipoDocumento: 'cedula', documento: '881-8543727-7', nss: '18543727-7', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-03-06', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 24, nombre: 'Tavarez Felipe, Yubelkys Altagracia', tipoDocumento: 'cedula', documento: '031-0410964-4', nss: '03679280-1', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 25000, tipoRemuneracion: 'Normal', fechaIngreso: '2024-09-23', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
+                { id: 25, nombre: 'Vivas Cuencas, Lisbia Coromoto', tipoDocumento: 'cedula', documento: '881-8270308-0', nss: '18270308-0', departamento: 'DOCENTE', cargo: 'Docente', salarioBase: 17193.12, tipoRemuneracion: 'Normal', fechaIngreso: '2024-10-08', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 },
             ];
             const prests = [];
             const lics = [];
@@ -1325,32 +1352,46 @@ const App = () => {
         const edits = {};
 
         const detalles = activos.map(emp => {
+            // IMPORTANTE: Calcular TSS sobre salario MENSUAL completo (para aplicar topes correctamente)
+            const tssMensual = calcularTSS(emp.salarioBase, config);
+            
+            // Calcular ISR sobre salario anual completo (considerando dependientes)
+            const salNetoAnual = (emp.salarioBase - tssMensual.afpEmp - tssMensual.sfsEmp) * 12;
+            const isrMensual = calcularISR(salNetoAnual, config);
+            
+            // Ahora dividir TODO por el divisor (quincenal = 2, mensual = 1)
             const salBase = emp.salarioBase / divisor;
-            const pdss = (emp.pdss || 0) / divisor;
+            const afpEmp = round2(tssMensual.afpEmp / divisor);
+            const sfsEmp = round2(tssMensual.sfsEmp / divisor);
+            const isr = round2(isrMensual / divisor);
+            const afpPat = round2(tssMensual.afpPat / divisor);
+            const sfsPat = round2(tssMensual.sfsPat / divisor);
+            const infotep = round2(tssMensual.infotep / divisor);
+            const riesgo = round2(tssMensual.riesgo / divisor);
+            
+            // Otras deducciones fijas también divididas
+            // PDSS = Dependientes adicionales SFS × Valor Per Cápita mensual / divisor
+            const pdss = round2(((emp.dependientesSFS || 0) * (config.tss.pdssPerCapita || 1100)) / divisor);
             const cooperativa = (emp.cooperativa || 0) / divisor;
             const seguroPrivado = (emp.seguroPrivado || 0) / divisor;
             const embargo = (emp.embargo || 0) / divisor;
             const cuotaPrestamo = getTotalCuotas(emp.id) / divisor;
 
-            // Calcular regalía si es diciembre
+            // Calcular regalía si es diciembre (solo en 2da quincena o mensual)
             const regalia = esRegalia ? calcularRegalia(emp.salarioBase, 12) : 0;
 
             edits[emp.id] = { diasAus: 0, minTard: 0, horas35: 0, horas100: 0, bonificacion: 0, comisiones: 0, incentivos: 0, viaticos: 0, otrosIng: 0, otrasDed: 0 };
 
-            const tss = calcularTSS(salBase, config);
-            const salNetoAnual = (salBase - tss.afpEmp - tss.sfsEmp) * 12 * divisor;
-            const isr = calcularISR(salNetoAnual, config);
-
             const totalIng = salBase + regalia;
-            const totalDed = tss.afpEmp + tss.sfsEmp + isr + pdss + cuotaPrestamo + cooperativa + seguroPrivado + embargo;
+            const totalDed = afpEmp + sfsEmp + isr + pdss + cuotaPrestamo + cooperativa + seguroPrivado + embargo;
 
             return {
                 empId: emp.id, nombre: emp.nombre, depto: emp.departamento, cargo: emp.cargo,
                 salarioBase: salBase, horasExtra: 0, bonificacion: 0, comisiones: 0, incentivos: 0, viaticos: 0, vacaciones: 0, regalia, otrosIng: 0, totalIng,
                 diasAus: 0, descAusencias: 0, minTard: 0, descTardanzas: 0,
-                afpEmp: tss.afpEmp, sfsEmp: tss.sfsEmp, isr, pdss, cuotaPrestamo, cooperativa, seguroPrivado, embargo, otrasDed: 0, totalDed,
+                afpEmp, sfsEmp, isr, pdss, cuotaPrestamo, cooperativa, seguroPrivado, embargo, otrasDed: 0, totalDed,
                 neto: round2(totalIng - totalDed),
-                afpPat: tss.afpPat, sfsPat: tss.sfsPat, infotep: tss.infotep, riesgo: tss.riesgo
+                afpPat, sfsPat, infotep, riesgo
             };
         });
 
@@ -1372,7 +1413,8 @@ const App = () => {
         const salDiario = calcularSalarioDiario(emp.salarioBase, config);
         const salHora = calcularSalarioHora(emp.salarioBase, config);
 
-        const descAusencias = round2((salDiario * (ed.diasAus || 0)) / divisor);
+        // Descuentos por ausencias y tardanzas (proporcionales al período)
+        const descAusencias = round2(salDiario * (ed.diasAus || 0) / divisor);
         const descTardanzas = round2((salHora * (ed.minTard || 0) / 60) / divisor);
         const horasExtra = calcularHorasExtras(emp.salarioBase, ed.horas35 || 0, ed.horas100 || 0, config).total / divisor;
         const bonificacion = parseFloat(ed.bonificacion) || 0;
@@ -1383,27 +1425,42 @@ const App = () => {
         const otrasDed = parseFloat(ed.otrasDed) || 0;
         const regalia = esRegalia ? calcularRegalia(emp.salarioBase, 12) : 0;
 
-        const pdss = (emp.pdss || 0) / divisor;
+        // Deducciones fijas divididas por período
+        // PDSS = Dependientes adicionales SFS × Valor Per Cápita mensual / divisor
+        const pdss = round2(((emp.dependientesSFS || 0) * (config.tss.pdssPerCapita || 1100)) / divisor);
         const cooperativa = (emp.cooperativa || 0) / divisor;
         const seguroPrivado = (emp.seguroPrivado || 0) / divisor;
         const embargo = (emp.embargo || 0) / divisor;
         const cuotaPrestamo = getTotalCuotas(emp.id) / divisor;
 
-        const salParaTSS = Math.max(0, salBase - descAusencias);
-        const tss = calcularTSS(salParaTSS, config);
-        const salNetoAnual = (salParaTSS - tss.afpEmp - tss.sfsEmp) * 12 * divisor;
-        const isr = calcularISR(salNetoAnual, config);
+        // IMPORTANTE: Calcular TSS sobre salario MENSUAL equivalente (para aplicar topes correctamente)
+        // Reconstruir salario mensual considerando ausencias
+        const salMensualParaTSS = Math.max(0, emp.salarioBase - (descAusencias * divisor));
+        const tssMensual = calcularTSS(salMensualParaTSS, config);
+        
+        // Calcular ISR sobre salario anual (considerando dependientes)
+        const salNetoAnual = (salMensualParaTSS - tssMensual.afpEmp - tssMensual.sfsEmp) * 12;
+        const isrMensual = calcularISR(salNetoAnual, config);
+        
+        // Dividir TSS e ISR por el divisor
+        const afpEmp = round2(tssMensual.afpEmp / divisor);
+        const sfsEmp = round2(tssMensual.sfsEmp / divisor);
+        const isr = round2(isrMensual / divisor);
+        const afpPat = round2(tssMensual.afpPat / divisor);
+        const sfsPat = round2(tssMensual.sfsPat / divisor);
+        const infotep = round2(tssMensual.infotep / divisor);
+        const riesgo = round2(tssMensual.riesgo / divisor);
 
         const totalIng = salBase + horasExtra + bonificacion + comisiones + incentivos + viaticos + regalia + otrosIng;
-        const totalDed = tss.afpEmp + tss.sfsEmp + isr + pdss + descAusencias + descTardanzas + cuotaPrestamo + cooperativa + seguroPrivado + embargo + otrasDed;
+        const totalDed = afpEmp + sfsEmp + isr + pdss + descAusencias + descTardanzas + cuotaPrestamo + cooperativa + seguroPrivado + embargo + otrasDed;
 
         return {
             empId: emp.id, nombre: emp.nombre, depto: emp.departamento, cargo: emp.cargo,
             salarioBase: salBase, horasExtra, bonificacion, comisiones, incentivos, viaticos, vacaciones: 0, regalia, otrosIng, totalIng,
             diasAus: ed.diasAus || 0, descAusencias, minTard: ed.minTard || 0, descTardanzas,
-            afpEmp: tss.afpEmp, sfsEmp: tss.sfsEmp, isr, pdss, cuotaPrestamo, cooperativa, seguroPrivado, embargo, otrasDed, totalDed,
+            afpEmp, sfsEmp, isr, pdss, cuotaPrestamo, cooperativa, seguroPrivado, embargo, otrasDed, totalDed,
             neto: round2(totalIng - totalDed),
-            afpPat: tss.afpPat, sfsPat: tss.sfsPat, infotep: tss.infotep, riesgo: tss.riesgo
+            afpPat, sfsPat, infotep, riesgo
         };
     };
 
@@ -1613,7 +1670,7 @@ const App = () => {
                         <button className="btn btn-secondary" onClick={() => { setEmpForm(empFormInit); setEditingEmp(null); openModal('empleado'); }}><Icons.Plus /> Nuevo Empleado</button>
                         <button className="btn btn-purple" onClick={() => openModal('prestamo')}><Icons.CreditCard /> Registrar Préstamo</button>
                         <button className="btn btn-info" onClick={() => openModal('licencia')}><Icons.Calendar /> Nueva Licencia</button>
-                        <button className="btn btn-orange" onClick={() => openModal('config')}><Icons.Settings /> Configuración TSS</button>
+                        <button className="btn btn-orange" onClick={() => setView('config')}><Icons.Settings /> Configuración TSS</button>
                     </div>
                 </div>
             </div>
@@ -1989,6 +2046,142 @@ const App = () => {
         </div>
     );
 
+    // Funciones para gestión de catálogos
+    const agregarItemCatalogo = () => {
+        if (!nuevoItem.trim()) return toast('Ingrese un valor', 'error');
+        const lista = catalogos[catalogoActivo];
+        if (lista.includes(nuevoItem.trim().toUpperCase()) || lista.includes(nuevoItem.trim())) {
+            return toast('Este valor ya existe', 'error');
+        }
+        setCatalogos(prev => ({
+            ...prev,
+            [catalogoActivo]: [...prev[catalogoActivo], catalogoActivo === 'departamentos' ? nuevoItem.trim().toUpperCase() : nuevoItem.trim()]
+        }));
+        setNuevoItem('');
+        toast('Agregado correctamente', 'success');
+    };
+    
+    const eliminarItemCatalogo = (item) => {
+        if (!window.confirm(`¿Eliminar "${item}"?`)) return;
+        setCatalogos(prev => ({
+            ...prev,
+            [catalogoActivo]: prev[catalogoActivo].filter(i => i !== item)
+        }));
+        toast('Eliminado correctamente', 'success');
+    };
+    
+    const editarItemCatalogo = (itemOriginal, itemNuevo) => {
+        if (!itemNuevo.trim()) return;
+        setCatalogos(prev => ({
+            ...prev,
+            [catalogoActivo]: prev[catalogoActivo].map(i => i === itemOriginal ? (catalogoActivo === 'departamentos' ? itemNuevo.trim().toUpperCase() : itemNuevo.trim()) : i)
+        }));
+        setEditandoItem(null);
+        toast('Actualizado correctamente', 'success');
+    };
+    
+    const catalogoInfo = {
+        departamentos: { titulo: 'Departamentos', icono: <Icons.Users />, descripcion: 'Áreas o departamentos de la institución' },
+        bancos: { titulo: 'Bancos', icono: <Icons.CreditCard />, descripcion: 'Entidades bancarias para pagos' },
+        tiposContrato: { titulo: 'Tipos de Contrato', icono: <Icons.FileText />, descripcion: 'Modalidades de contratación laboral' },
+        tiposLicencia: { titulo: 'Tipos de Licencia', icono: <Icons.Calendar />, descripcion: 'Tipos de permisos y licencias' },
+        tiposRemuneracion: { titulo: 'Tipos de Remuneración', icono: <Icons.Dollar />, descripcion: 'Formas de pago según TSS' },
+        cargos: { titulo: 'Cargos', icono: <Icons.Award />, descripcion: 'Posiciones o cargos laborales' }
+    };
+
+    const renderMantenimiento = () => (
+        <div style={{display:'grid', gridTemplateColumns:'280px 1fr', gap:'16px'}}>
+            {/* Panel lateral de catálogos */}
+            <div className="card">
+                <div className="card-header"><span className="card-title"><Icons.Database /> Catálogos</span></div>
+                <div className="card-body" style={{padding:'8px'}}>
+                    {Object.entries(catalogoInfo).map(([key, info]) => (
+                        <div 
+                            key={key}
+                            className={`nav-item ${catalogoActivo === key ? 'active' : ''}`}
+                            style={{margin:'2px 0', background: catalogoActivo === key ? 'var(--primary-light)' : 'transparent', color: catalogoActivo === key ? 'white' : 'var(--text-primary)', borderRadius:'6px', cursor:'pointer'}}
+                            onClick={() => { setCatalogoActivo(key); setNuevoItem(''); setEditandoItem(null); }}
+                        >
+                            {info.icono}
+                            <div>
+                                <div style={{fontWeight:600, fontSize:'11px'}}>{info.titulo}</div>
+                                <div style={{fontSize:'9px', opacity:0.7}}>{catalogos[key].length} items</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            
+            {/* Panel de edición */}
+            <div className="card">
+                <div className="card-header">
+                    <span className="card-title">{catalogoInfo[catalogoActivo].icono} {catalogoInfo[catalogoActivo].titulo}</span>
+                    <span style={{fontSize:'10px', color:'var(--text-muted)'}}>{catalogoInfo[catalogoActivo].descripcion}</span>
+                </div>
+                <div className="card-body">
+                    {/* Formulario agregar */}
+                    <div style={{display:'flex', gap:'8px', marginBottom:'16px'}}>
+                        <input 
+                            className="form-control" 
+                            placeholder={`Nuevo ${catalogoInfo[catalogoActivo].titulo.slice(0,-1).toLowerCase()}...`}
+                            value={nuevoItem}
+                            onChange={e => setNuevoItem(e.target.value)}
+                            onKeyPress={e => e.key === 'Enter' && agregarItemCatalogo()}
+                        />
+                        <button className="btn btn-primary" onClick={agregarItemCatalogo}><Icons.Plus /> Agregar</button>
+                    </div>
+                    
+                    {/* Lista de items */}
+                    <div className="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style={{width:'40px'}}>#</th>
+                                    <th>Nombre</th>
+                                    <th style={{width:'100px'}}>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {catalogos[catalogoActivo].map((item, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{textAlign:'center', color:'var(--text-muted)'}}>{idx + 1}</td>
+                                        <td>
+                                            {editandoItem === item ? (
+                                                <input 
+                                                    className="form-control sm"
+                                                    defaultValue={item}
+                                                    autoFocus
+                                                    onBlur={e => editarItemCatalogo(item, e.target.value)}
+                                                    onKeyPress={e => e.key === 'Enter' && editarItemCatalogo(item, e.target.value)}
+                                                />
+                                            ) : (
+                                                <span style={{fontWeight:500}}>{item}</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <div className="actions">
+                                                <button className="action-btn" title="Editar" onClick={() => setEditandoItem(item)}><Icons.Edit /></button>
+                                                <button className="action-btn danger" title="Eliminar" onClick={() => eliminarItemCatalogo(item)}><Icons.Trash /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {catalogos[catalogoActivo].length === 0 && (
+                        <div className="empty">
+                            <Icons.AlertCircle />
+                            <h3>Sin registros</h3>
+                            <p>Agregue nuevos items usando el formulario de arriba</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
     const renderConfig = () => (
         <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px'}}>
             <div className="card">
@@ -2010,6 +2203,7 @@ const App = () => {
                         <div className="config-title">Topes Cotizables</div>
                         <div className="config-row"><span>Tope AFP</span><input className="config-input" style={{width:'100px'}} type="number" value={config.tss.topeAfp} onChange={e => setConfig(c => ({...c, tss: {...c.tss, topeAfp: +e.target.value}}))} /></div>
                         <div className="config-row"><span>Tope SFS</span><input className="config-input" style={{width:'100px'}} type="number" value={config.tss.topeSfs} onChange={e => setConfig(c => ({...c, tss: {...c.tss, topeSfs: +e.target.value}}))} /></div>
+                        <div className="config-row"><span>PDSS Per Cápita</span><input className="config-input" style={{width:'80px'}} type="number" value={config.tss.pdssPerCapita} onChange={e => setConfig(c => ({...c, tss: {...c.tss, pdssPerCapita: +e.target.value}}))} /><span style={{fontSize:'9px',marginLeft:'4px',color:'var(--text-muted)'}}>mensual</span></div>
                     </div>
                 </div>
             </div>
@@ -2047,6 +2241,7 @@ const App = () => {
             case 'prestamos': return renderPrestamos();
             case 'licencias': return renderLicencias();
             case 'historial': return renderHistorial();
+            case 'mantenimiento': return renderMantenimiento();
             case 'config': return renderConfig();
             default: return renderDashboard();
         }
@@ -2056,7 +2251,7 @@ const App = () => {
         <div className="app">
             {/* Sidebar */}
             <aside className="sidebar no-print">
-                <div className="sidebar-header"><div className="logo"><div className="logo-icon">NT</div><div><h1>Nómina Tehui</h1><span>Sistema v3.0</span></div></div></div>
+                <div className="sidebar-header"><div className="logo"><div className="logo-icon">NT</div><div><h1>Nómina Tehui</h1><span>Sistema v3.1</span></div></div></div>
                 <nav className="nav">
                     <div className="nav-group"><div className="nav-label">Principal</div>
                         <div className={`nav-item ${view === 'dashboard' ? 'active' : ''}`} onClick={() => setView('dashboard')}><Icons.Dashboard /><span>Dashboard</span></div>
@@ -2071,6 +2266,7 @@ const App = () => {
                         <div className={`nav-item ${view === 'historial' ? 'active' : ''}`} onClick={() => setView('historial')}><Icons.Clock /><span>Historial</span></div>
                     </div>
                     <div className="nav-group"><div className="nav-label">Sistema</div>
+                        <div className={`nav-item ${view === 'mantenimiento' ? 'active' : ''}`} onClick={() => setView('mantenimiento')}><Icons.Database /><span>Mantenimiento</span></div>
                         <div className={`nav-item ${view === 'config' ? 'active' : ''}`} onClick={() => setView('config')}><Icons.Settings /><span>Configuración</span></div>
                     </div>
                     
@@ -2113,7 +2309,7 @@ const App = () => {
             <main className="main">
                 <header className="topbar no-print">
                     <div className="topbar-left">
-                        <h2>{view === 'dashboard' ? 'Dashboard' : view === 'empleados' ? 'Empleados' : view === 'nomina' ? 'Nómina' : view === 'prestamos' ? 'Préstamos' : view === 'licencias' ? 'Licencias' : view === 'historial' ? 'Historial' : 'Configuración'}</h2>
+                        <h2>{view === 'dashboard' ? 'Dashboard' : view === 'empleados' ? 'Empleados' : view === 'nomina' ? 'Nómina' : view === 'prestamos' ? 'Préstamos' : view === 'licencias' ? 'Licencias' : view === 'historial' ? 'Historial' : view === 'mantenimiento' ? 'Mantenimiento' : 'Configuración'}</h2>
                         <p style={{display:'flex', alignItems:'center', gap:'8px'}}>
                             {config.empresa.nombre}
                             {spConnected ? (
@@ -2157,7 +2353,7 @@ const App = () => {
                 </div>
                 <h4 style={{margin:'16px 0 12px', fontSize:'12px', color:'var(--text-secondary)'}}>Deducciones Fijas Mensuales</h4>
                 <div className="form-grid">
-                    <div className="form-group"><label className="form-label">PDSS Per Cápita</label><input className="form-control" type="number" value={empForm.pdss} onChange={e => setEmpForm(f => ({...f, pdss: e.target.value}))} placeholder="0" /><div className="form-help">Por dependientes adicionales</div></div>
+                    <div className="form-group"><label className="form-label">Depend. Adic. SFS</label><input className="form-control" type="number" min="0" max="10" value={empForm.dependientesSFS || 0} onChange={e => setEmpForm(f => ({...f, dependientesSFS: parseInt(e.target.value) || 0}))} placeholder="0" /><div className="form-help">Dependientes adicionales en seguro salud</div></div>
                     <div className="form-group"><label className="form-label">Cooperativa</label><input className="form-control" type="number" value={empForm.cooperativa} onChange={e => setEmpForm(f => ({...f, cooperativa: e.target.value}))} placeholder="0" /></div>
                     <div className="form-group"><label className="form-label">Seguro Médico</label><input className="form-control" type="number" value={empForm.seguroPrivado} onChange={e => setEmpForm(f => ({...f, seguroPrivado: e.target.value}))} placeholder="0" /><div className="form-help">Seguro privado adicional</div></div>
                     <div className="form-group"><label className="form-label">Embargo/Pensión</label><input className="form-control" type="number" value={empForm.embargo} onChange={e => setEmpForm(f => ({...f, embargo: e.target.value}))} placeholder="0" /><div className="form-help">Deducciones judiciales</div></div>
