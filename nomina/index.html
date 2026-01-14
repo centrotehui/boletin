@@ -1947,6 +1947,11 @@ const App = () => {
     }, [currentNomina, selectedVolante, nominaEdits, empleados]);
 
     // =========================================
+    // PERMISOS DE USUARIO
+    // =========================================
+    const esAdmin = usuarioActual?.rol === 'admin';
+
+    // =========================================
     // RENDER VISTAS
     // =========================================
     const renderDashboard = () => (
