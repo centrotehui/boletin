@@ -1101,6 +1101,32 @@ const App = () => {
         } catch { return null; }
     });
     const [loginForm, setLoginForm] = useState({ usuario: '', password: '', error: '' });
+    const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false);
+    const [cambioPasswordForm, setCambioPasswordForm] = useState({ actual: '', nueva: '', confirmar: '', error: '' });
+
+    // Función para cambiar contraseña (solo muestra mensaje informativo)
+    const handleCambioPassword = (e) => {
+        e.preventDefault();
+        const { actual, nueva, confirmar } = cambioPasswordForm;
+        
+        if (!actual || !nueva || !confirmar) {
+            setCambioPasswordForm(prev => ({ ...prev, error: 'Todos los campos son requeridos' }));
+            return;
+        }
+        if (nueva !== confirmar) {
+            setCambioPasswordForm(prev => ({ ...prev, error: 'Las contraseñas no coinciden' }));
+            return;
+        }
+        if (nueva.length < 6) {
+            setCambioPasswordForm(prev => ({ ...prev, error: 'La contraseña debe tener al menos 6 caracteres' }));
+            return;
+        }
+        
+        // Simular cambio exitoso (en producción se conectaría a un backend)
+        alert('Funcionalidad de cambio de contraseña: En un entorno de producción, esto actualizaría la contraseña en el servidor.');
+        setMostrarCambioPassword(false);
+        setCambioPasswordForm({ actual: '', nueva: '', confirmar: '', error: '' });
+    };
 
     // Login de usuario del sistema
     const handleUserLogin = (e) => {
