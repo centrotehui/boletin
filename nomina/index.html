@@ -1377,10 +1377,19 @@ const App = () => {
             const configLocal = cargarDeLocal(STORAGE_KEYS.config);
             const catalogosLocal = cargarDeLocal(STORAGE_KEYS.catalogos);
 
+            // Función para normalizar empleados (agregar campos faltantes)
+            const normalizarEmpleado = (emp) => ({
+                celular: '', telefono: '', direccion: '', fechaNacimiento: '', 
+                estadoCivil: 'Soltero/a', nacionalidad: 'Dominicana', 
+                fechaSalida: '', motivoSalida: '',
+                dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0,
+                ...emp  // Los datos existentes sobrescriben los valores por defecto
+            });
+            
             // Si hay datos en localStorage, usarlos
             if (empsLocal && empsLocal.length > 0) {
                 console.log('Cargando datos de localStorage...');
-                setEmpleados(empsLocal);
+                setEmpleados(empsLocal.map(normalizarEmpleado));
                 setPrestamos(prestsLocal || []);
                 setLicencias(licsLocal || []);
                 setNominas(nominasLocal || []);
@@ -1425,7 +1434,7 @@ const App = () => {
             ];
             const prests = [];
             const lics = [];
-            setEmpleados(emps);
+            setEmpleados(emps.map(normalizarEmpleado));
             setPrestamos(prests);
             setLicencias(lics);
             setLoading(false);
@@ -1557,10 +1566,38 @@ const App = () => {
     // CRUD Empleados
     const guardarEmpleado = async () => {
         if (!empForm.nombre || !empForm.salarioBase) { toast('Complete los campos requeridos', 'error'); return; }
-        const data = { ...empForm, salarioBase: parseFloat(empForm.salarioBase), pdss: parseFloat(empForm.pdss) || 0, cooperativa: parseFloat(empForm.cooperativa) || 0, seguroPrivado: parseFloat(empForm.seguroPrivado) || 0, embargo: parseFloat(empForm.embargo) || 0 };
+        
+        // Construir objeto con todos los campos, parseando números correctamente
+        const data = { 
+            ...empForm,
+            // Campos numéricos - asegurar que se parseen correctamente
+            salarioBase: parseFloat(empForm.salarioBase) || 0,
+            dependientesSFS: parseInt(empForm.dependientesSFS) || 0,
+            cooperativa: parseFloat(empForm.cooperativa) || 0,
+            seguroPrivado: parseFloat(empForm.seguroPrivado) || 0,
+            embargo: parseFloat(empForm.embargo) || 0,
+            vacacionesDisfrutadas: parseFloat(empForm.vacacionesDisfrutadas) || 0,
+            // Campos de texto - asegurar valores por defecto
+            celular: empForm.celular || '',
+            telefono: empForm.telefono || '',
+            direccion: empForm.direccion || '',
+            fechaNacimiento: empForm.fechaNacimiento || '',
+            estadoCivil: empForm.estadoCivil || 'Soltero/a',
+            nacionalidad: empForm.nacionalidad || 'Dominicana',
+            fechaSalida: empForm.fechaSalida || '',
+            motivoSalida: empForm.motivoSalida || '',
+            // Booleano
+            activo: empForm.activo === true || empForm.activo === 'true'
+        };
         
         if (editingEmp) {
-            const updated = { ...data, id: editingEmp.id, _spId: editingEmp._spId };
+            // Al editar, preservar campos del empleado original que no están en el formulario
+            const updated = { 
+                ...editingEmp,  // Primero los datos originales
+                ...data,       // Luego sobrescribir con los nuevos
+                id: editingEmp.id, 
+                _spId: editingEmp._spId 
+            };
             setEmpleados(p => p.map(e => e.id === editingEmp.id ? updated : e));
             if (spConnected) await guardarEmpleadoSP(updated);
             toast('Empleado actualizado', 'success');
@@ -1575,7 +1612,17 @@ const App = () => {
         setEmpForm(empFormInit);
     };
 
-    const editarEmpleado = emp => { setEditingEmp(emp); setEmpForm({ ...emp }); openModal('empleado'); };
+    const editarEmpleado = emp => { 
+        setEditingEmp(emp); 
+        // Combinar con empFormInit para asegurar que todos los campos existan
+        setEmpForm({ 
+            ...empFormInit,  // Primero valores por defecto
+            ...emp,          // Luego datos del empleado
+            // Asegurar que campos booleanos se manejen correctamente
+            activo: emp.activo === true || emp.activo === 'true'
+        }); 
+        openModal('empleado'); 
+    };
     const eliminarEmpleado = id => { if (confirm('¿Eliminar empleado?')) { setEmpleados(p => p.filter(e => e.id !== id)); toast('Empleado eliminado', 'warning'); } };
 
     // CRUD Préstamos
