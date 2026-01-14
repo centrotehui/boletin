@@ -1523,7 +1523,7 @@ const App = () => {
     }, [licencias, datosInicializados]);
 
     React.useEffect(() => {
-        if (datosInicializados && nominas.length > 0) {
+        if (datosInicializados) {
             console.log('Guardando nóminas en localStorage:', nominas.length);
             guardarEnLocal(STORAGE_KEYS.nominas, nominas);
         }
@@ -1657,6 +1657,23 @@ const App = () => {
             return codigoExistente === codigoNuevo && (n.estado === 'guardada' || n.estado === 'procesada');
         });
         
+        // Verificar si hay un borrador existente para este período
+        const borradorExistente = nominas.find(n => {
+            const codigoExistente = `${n.periodo.año}${n.periodo.mes.toString().padStart(2,'0')}${n.periodo.tipo === 'quincenal' ? n.periodo.quincena : '0'}`;
+            return codigoExistente === codigoNuevo && n.estado === 'borrador';
+        });
+        
+        if (borradorExistente) {
+            // Preguntar si quiere continuar con el borrador
+            if (window.confirm(`Existe un BORRADOR guardado para este período (Código: ${codigoNuevo}).\n\n¿Desea CONTINUAR editando el borrador?\n\n• Sí = Cargar el borrador guardado\n• No = Crear una nómina nueva (el borrador se perderá)`)) {
+                cargarBorrador(borradorExistente);
+                return;
+            } else {
+                // Eliminar borrador anterior si decide crear uno nuevo
+                setNominas(p => p.filter(n => n.id !== borradorExistente.id));
+            }
+        }
+        
         if (existente) {
             // Preguntar si quiere editar la existente
             if (window.confirm(`Ya existe una nómina procesada para este período (Código: ${codigoNuevo}).\n\n¿Desea EDITARLA para hacer correcciones?\n\nLos cambios sobrescribirán la nómina anterior.`)) {
@@ -1722,7 +1739,7 @@ const App = () => {
 
         setNominaEdits(edits);
         setCurrentNomina({ id: Date.now(), codigo: codigoNuevo, periodo: { ...periodo }, fecha: new Date().toISOString(), detalles, estado: 'borrador' });
-        toast(`Nómina ${codigoNuevo} generada - Ajuste valores antes de guardar`, 'success');
+        toast(`Nómina ${codigoNuevo} generada - Use "Guardar Borrador" para guardar cambios`, 'warning');
         setView('nomina');
     };
 
@@ -1781,7 +1798,7 @@ const App = () => {
 
         return {
             empId: emp.id, nombre: emp.nombre, depto: emp.departamento, cargo: emp.cargo,
-            salarioBase: salBase, horasExtra, bonificacion, comisiones, incentivos, viaticos, vacaciones: 0, regalia, otrosIng, totalIng,
+            salarioBase: salBase, horasExtra, horas35: ed.horas35 || 0, horas100: ed.horas100 || 0, bonificacion, comisiones, incentivos, viaticos, vacaciones: 0, regalia, otrosIng, totalIng,
             diasAus: ed.diasAus || 0, fechasAus: ed.fechasAus || [], descAusencias, minTard: ed.minTard || 0, descTardanzas,
             afpEmp, sfsEmp, isr, pdss, cuotaPrestamo, cooperativa, seguroPrivado, embargo, otrasDed, totalDed,
             neto: round2(totalIng - totalDed),
@@ -1792,12 +1809,72 @@ const App = () => {
     const getDetallesRecalc = () => currentNomina ? currentNomina.detalles.map(d => recalcularDetalle(d.empId) || d) : [];
     const updateEdit = (empId, field, val) => setNominaEdits(p => ({ ...p, [empId]: { ...p[empId], [field]: val } }));
 
-    // Guardar nómina como borrador (sin procesar)
+    // Guardar nómina como borrador (persiste en localStorage)
     const guardarBorrador = () => {
+        if (!currentNomina) {
+            toast('No hay nómina para guardar', 'error');
+            return;
+        }
+        
         const detalles = getDetallesRecalc();
-        const nominaActualizada = { ...currentNomina, detalles };
+        const nominaActualizada = { 
+            ...currentNomina, 
+            detalles,
+            estado: 'borrador',
+            fechaModificacion: new Date().toISOString()
+        };
+        
+        // Actualizar estado de nómina actual
         setCurrentNomina(nominaActualizada);
-        toast('Cambios guardados en borrador', 'info');
+        
+        // Actualizar lista de nóminas
+        setNominas(prev => {
+            const existe = prev.find(n => n.id === nominaActualizada.id);
+            let nuevasNominas;
+            if (existe) {
+                nuevasNominas = prev.map(n => n.id === nominaActualizada.id ? nominaActualizada : n);
+            } else {
+                nuevasNominas = [...prev, nominaActualizada];
+            }
+            
+            // Guardar directamente en localStorage para asegurar persistencia
+            try {
+                localStorage.setItem(STORAGE_KEYS.nominas, JSON.stringify(nuevasNominas));
+                console.log('Borrador guardado en localStorage:', nominaActualizada.codigo);
+            } catch (e) {
+                console.error('Error guardando borrador:', e);
+            }
+            
+            return nuevasNominas;
+        });
+        
+        toast('Borrador guardado correctamente', 'success');
+    };
+    
+    // Cargar borrador existente
+    const cargarBorrador = (borrador) => {
+        // Reconstruir los edits desde los detalles del borrador
+        const edits = {};
+        borrador.detalles.forEach(d => {
+            edits[d.empId] = {
+                diasAus: d.diasAus || 0,
+                fechasAus: d.fechasAus || [],
+                minTard: d.minTard || 0,
+                horas35: d.horas35 || 0,
+                horas100: d.horas100 || 0,
+                bonificacion: d.bonificacion || 0,
+                comisiones: d.comisiones || 0,
+                incentivos: d.incentivos || 0,
+                viaticos: d.viaticos || 0,
+                otrosIng: d.otrosIng || 0,
+                otrasDed: d.otrasDed || 0
+            };
+        });
+        
+        setNominaEdits(edits);
+        setCurrentNomina(borrador);
+        toast(`Borrador ${borrador.codigo} cargado - Continúe editando`, 'info');
+        setView('nomina');
     };
 
     // Procesar/Cerrar nómina (finalizar)
@@ -2148,7 +2225,7 @@ const App = () => {
                     <div className="btn-group">
                         {esBorrador && (
                             <>
-                                <button className="btn btn-secondary" onClick={guardarBorrador}><Icons.Save /> Guardar Borrador</button>
+                                <button className="btn btn-primary" onClick={guardarBorrador} style={{fontWeight:'bold'}}><Icons.Save /> 💾 Guardar Borrador</button>
                                 <button className="btn btn-success" onClick={procesarNomina}><Icons.Check /> Procesar Nómina</button>
                             </>
                         )}
@@ -2444,6 +2521,12 @@ const App = () => {
                                             <td>
                                                 <div className="btn-group">
                                                     <button className="btn btn-xs btn-secondary" title="Ver detalle" onClick={() => { setCurrentNomina(n); setView('nomina'); }}><Icons.Eye /></button>
+                                                    {n.estado === 'borrador' && (
+                                                        <>
+                                                            <button className="btn btn-xs btn-primary" title="Continuar editando" onClick={() => cargarBorrador(n)}><Icons.Edit /></button>
+                                                            <button className="btn btn-xs btn-danger" title="Eliminar borrador" onClick={() => { if(window.confirm('¿Eliminar este borrador?')) setNominas(p => p.filter(x => x.id !== n.id)); }}><Icons.Trash /></button>
+                                                        </>
+                                                    )}
                                                     {esProcesada && (
                                                         <>
                                                             <button className="btn btn-xs btn-purple" title="Volantes" onClick={() => { setCurrentNomina(n); setSelectedVolante(null); openModal('volantes'); }}><Icons.Receipt /></button>
