@@ -1173,6 +1173,7 @@ const App = () => {
     const [nominaEdits, setNominaEdits] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [filterDept, setFilterDept] = useState('TODOS');
+    const [filterEstado, setFilterEstado] = useState('ACTIVOS');
     
     // Estados de Configuración del Sistema (Mantenimiento)
     const [catalogos, setCatalogos] = useState({
@@ -1211,7 +1212,7 @@ const App = () => {
     const [ausenciasEmpId, setAusenciasEmpId] = useState(null); // Empleado seleccionado para registrar ausencias
     
     // Forms
-    const empFormInit = { nombre: '', tipoDocumento: 'cedula', documento: '', nss: '', departamento: 'DOCENTE', cargo: '', salarioBase: '', tipoRemuneracion: 'Normal', fechaIngreso: '', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0 };
+    const empFormInit = { nombre: '', tipoDocumento: 'cedula', documento: '', nss: '', departamento: 'DOCENTE', cargo: '', salarioBase: '', tipoRemuneracion: 'Normal', fechaIngreso: '', fechaSalida: '', motivoSalida: '', tipoContrato: 'Indefinido', banco: '', cuenta: '', activo: true, dependientesSFS: 0, cooperativa: 0, seguroPrivado: 0, embargo: 0, vacacionesDisfrutadas: 0, celular: '', telefono: '', direccion: '', fechaNacimiento: '', estadoCivil: 'Soltero/a', nacionalidad: 'Dominicana' };
     const [empForm, setEmpForm] = useState(empFormInit);
     const [prestamoForm, setPrestamoForm] = useState({ empleadoId: '', monto: '', cuotas: '', desc: '', fecha: '' });
     const [editingPrestamo, setEditingPrestamo] = useState(null);
@@ -1683,7 +1684,16 @@ const App = () => {
             return;
         }
         
-        const activos = empleados.filter(e => e.activo);
+        // Filtrar empleados elegibles: activos Y (sin fecha salida O fecha salida posterior al inicio del período)
+        const inicioMes = new Date(periodo.año, periodo.mes - 1, 1);
+        const activos = empleados.filter(e => {
+            if (!e.activo) return false;
+            if (!e.fechaSalida) return true;
+            // Si tiene fecha de salida, incluir solo si salió después del inicio del período
+            const fechaSal = new Date(e.fechaSalida);
+            return fechaSal >= inicioMes;
+        });
+        
         if (activos.length === 0) {
             toast('No hay empleados activos para generar la nómina', 'error');
             return;
@@ -2026,15 +2036,21 @@ const App = () => {
 
     // Filtros
     const empsFiltrados = useMemo(() => empleados.filter(e => {
-        const matchSearch = e.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || e.documento?.includes(searchTerm) || e.nss?.includes(searchTerm);
+        const matchSearch = e.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || e.documento?.includes(searchTerm) || e.nss?.includes(searchTerm) || e.celular?.includes(searchTerm);
         const matchDept = filterDept === 'TODOS' || e.departamento === filterDept;
-        return matchSearch && matchDept;
-    }), [empleados, searchTerm, filterDept]);
+        const esDesvinculado = e.fechaSalida ? true : false;
+        const matchEstado = filterEstado === 'TODOS' || 
+            (filterEstado === 'ACTIVOS' && e.activo && !esDesvinculado) ||
+            (filterEstado === 'DESVINCULADOS' && esDesvinculado);
+        return matchSearch && matchDept && matchEstado;
+    }), [empleados, searchTerm, filterDept, filterEstado]);
 
     const stats = useMemo(() => {
-        const activos = empleados.filter(e => e.activo);
+        const activos = empleados.filter(e => e.activo && !e.fechaSalida);
+        const desvinculados = empleados.filter(e => e.fechaSalida);
         return {
             totalEmps: activos.length,
+            totalDesvinculados: desvinculados.length,
             totalNomina: activos.reduce((s, e) => s + e.salarioBase, 0),
             totalPrestamos: prestamos.filter(p => p.activo).reduce((s, p) => s + p.saldo, 0),
             prestamosActivos: prestamos.filter(p => p.activo && p.saldo > 0).length,
@@ -2166,28 +2182,45 @@ const App = () => {
         <div className="card">
             <div className="card-header"><span className="card-title"><Icons.Users /> Empleados ({empsFiltrados.length})</span>{<button className="btn btn-primary" onClick={() => { setEmpForm(empFormInit); setEditingEmp(null); openModal('empleado'); }}><Icons.Plus /> Nuevo</button>}</div>
             <div className="card-body">
-                <div className="search-wrap"><Icons.Search className="search-icon" /><input className="search-input" placeholder="Buscar por nombre o documento..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                <div className="filters"><span className={`filter ${filterDept === 'TODOS' ? 'active' : ''}`} onClick={() => setFilterDept('TODOS')}>Todos</span>{DEPARTAMENTOS.slice(0,7).map(d => <span key={d} className={`filter ${filterDept === d ? 'active' : ''}`} onClick={() => setFilterDept(d)}>{d}</span>)}</div>
+                <div className="search-wrap"><Icons.Search className="search-icon" /><input className="search-input" placeholder="Buscar por nombre, documento o celular..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
+                <div style={{display:'flex', gap:'16px', flexWrap:'wrap', marginBottom:'12px'}}>
+                    <div className="filters"><span className={`filter ${filterDept === 'TODOS' ? 'active' : ''}`} onClick={() => setFilterDept('TODOS')}>Todos Dptos</span>{DEPARTAMENTOS.slice(0,6).map(d => <span key={d} className={`filter ${filterDept === d ? 'active' : ''}`} onClick={() => setFilterDept(d)}>{d}</span>)}</div>
+                    <div className="filters">
+                        <span className={`filter ${filterEstado === 'ACTIVOS' ? 'active' : ''}`} onClick={() => setFilterEstado('ACTIVOS')} style={{background: filterEstado === 'ACTIVOS' ? 'var(--success)' : ''}}>✅ Activos</span>
+                        <span className={`filter ${filterEstado === 'DESVINCULADOS' ? 'active' : ''}`} onClick={() => setFilterEstado('DESVINCULADOS')} style={{background: filterEstado === 'DESVINCULADOS' ? 'var(--danger)' : ''}}>🚪 Desvinculados</span>
+                        <span className={`filter ${filterEstado === 'TODOS' ? 'active' : ''}`} onClick={() => setFilterEstado('TODOS')}>📋 Todos</span>
+                    </div>
+                </div>
                 <div className="table-wrap">
                     <table>
-                        <thead><tr><th>Empleado</th><th>Documento</th><th>NSS</th><th>Departamento</th><th>Salario</th><th>Tipo Rem.</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Empleado</th><th>Documento</th><th>Celular</th><th>Departamento</th><th>Salario</th><th>Estado</th><th>Acciones</th></tr></thead>
                         <tbody>
                             {empsFiltrados.map(e => {
                                 const prest = getPrestamosPend(e.id).reduce((s,p) => s + p.saldo, 0);
+                                const esDesvinculado = e.fechaSalida ? true : false;
                                 return (
-                                    <tr key={e.id}>
-                                        <td><div className="emp-cell"><div className="emp-avatar">{getInitials(e.nombre)}</div><div><div className="emp-name">{e.nombre}</div><div className="emp-sub">{e.cargo || e.departamento}</div></div></div></td>
+                                    <tr key={e.id} style={esDesvinculado ? {opacity: 0.7, background: 'rgba(239,68,68,0.05)'} : {}}>
+                                        <td><div className="emp-cell"><div className="emp-avatar" style={esDesvinculado ? {background: '#6c757d'} : {}}>{getInitials(e.nombre)}</div><div><div className="emp-name">{e.nombre}</div><div className="emp-sub">{e.cargo || e.departamento}</div></div></div></td>
                                         <td style={{fontFamily:'JetBrains Mono', fontSize:'10px'}}><span className="badge badge-secondary" style={{fontSize:'8px', marginRight:'4px'}}>{e.tipoDocumento === 'pasaporte' ? 'PAS' : 'CED'}</span>{e.documento}</td>
-                                        <td style={{fontFamily:'JetBrains Mono', fontSize:'10px'}}>{e.nss || '-'}</td>
+                                        <td style={{fontSize:'11px'}}>{e.celular || <span style={{color:'var(--text-muted)'}}>-</span>}</td>
                                         <td><span className="badge badge-info">{e.departamento}</span></td>
                                         <td className="money">RD$ {formatMoney(e.salarioBase)}</td>
-                                        <td><span className={`badge ${e.tipoRemuneracion === 'Normal' ? 'badge-success' : 'badge-warning'}`} style={{fontSize:'8px'}}>{e.tipoRemuneracion === 'Normal' ? 'Normal' : e.tipoRemuneracion === 'Trabajador ocasional (no fijo)' ? 'Ocasional' : 'Por hora'}</span></td>
-                                        <td><span className={`badge ${e.activo ? 'badge-success' : 'badge-danger'}`}>{e.activo ? 'Activo' : 'Inactivo'}</span></td>
+                                        <td>
+                                            {esDesvinculado ? (
+                                                <div>
+                                                    <span className="badge badge-danger">Desvinculado</span>
+                                                    <div style={{fontSize:'9px', color:'var(--text-muted)', marginTop:'2px'}}>{formatDate(e.fechaSalida)}</div>
+                                                </div>
+                                            ) : (
+                                                <span className={`badge ${e.activo ? 'badge-success' : 'badge-warning'}`}>{e.activo ? 'Activo' : 'Inactivo'}</span>
+                                            )}
+                                        </td>
                                         <td>
                                             <div className="actions">
                                                 {<button className="action-btn" title="Editar" onClick={() => editarEmpleado(e)}><Icons.Edit /></button>}
                                                 {<button className="action-btn" title="Liquidar" onClick={() => calcularLiquidacionEmp(e)}><Icons.UserMinus /></button>}
                                                 <button className="action-btn" title="Constancia" onClick={() => { setSelectedEmp(e); openModal('constancia'); }}><Icons.FileText /></button>
+                                                <button className="action-btn" title="Ver historial nóminas" onClick={() => { setSelectedEmp(e); setView('historial'); }}><Icons.Clock /></button>
                                                 {<button className="action-btn danger" title="Eliminar" onClick={() => eliminarEmpleado(e.id)}><Icons.Trash /></button>}
                                             </div>
                                         </td>
@@ -3025,6 +3058,15 @@ const App = () => {
                     <div className="form-group"><label className="form-label">Fecha Ingreso</label><input className="form-control" type="date" value={empForm.fechaIngreso} onChange={e => setEmpForm(f => ({...f, fechaIngreso: e.target.value}))} /></div>
                     <div className="form-group"><label className="form-label">Tipo Contrato</label><select className="form-control" value={empForm.tipoContrato} onChange={e => setEmpForm(f => ({...f, tipoContrato: e.target.value}))}>{TIPOS_CONTRATO.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
                 </div>
+                <h4 style={{margin:'16px 0 12px', fontSize:'12px', color:'var(--text-secondary)'}}>📋 Datos Personales</h4>
+                <div className="form-grid">
+                    <div className="form-group"><label className="form-label">📱 Celular</label><input className="form-control" value={empForm.celular || ''} onChange={e => setEmpForm(f => ({...f, celular: e.target.value}))} placeholder="809-000-0000" /></div>
+                    <div className="form-group"><label className="form-label">📞 Teléfono Casa</label><input className="form-control" value={empForm.telefono || ''} onChange={e => setEmpForm(f => ({...f, telefono: e.target.value}))} placeholder="809-000-0000" /></div>
+                    <div className="form-group"><label className="form-label">🎂 Fecha Nacimiento</label><input className="form-control" type="date" value={empForm.fechaNacimiento || ''} onChange={e => setEmpForm(f => ({...f, fechaNacimiento: e.target.value}))} /></div>
+                    <div className="form-group"><label className="form-label">💍 Estado Civil</label><select className="form-control" value={empForm.estadoCivil || 'Soltero/a'} onChange={e => setEmpForm(f => ({...f, estadoCivil: e.target.value}))}><option value="Soltero/a">Soltero/a</option><option value="Casado/a">Casado/a</option><option value="Unión Libre">Unión Libre</option><option value="Divorciado/a">Divorciado/a</option><option value="Viudo/a">Viudo/a</option></select></div>
+                    <div className="form-group"><label className="form-label">🌍 Nacionalidad</label><select className="form-control" value={empForm.nacionalidad || 'Dominicana'} onChange={e => setEmpForm(f => ({...f, nacionalidad: e.target.value}))}><option value="Dominicana">Dominicana</option><option value="Haitiana">Haitiana</option><option value="Venezolana">Venezolana</option><option value="Colombiana">Colombiana</option><option value="Estadounidense">Estadounidense</option><option value="Española">Española</option><option value="Otra">Otra</option></select></div>
+                    <div className="form-group span-2"><label className="form-label">🏠 Dirección</label><input className="form-control" value={empForm.direccion || ''} onChange={e => setEmpForm(f => ({...f, direccion: e.target.value}))} placeholder="Calle, No., Sector, Ciudad" /></div>
+                </div>
                 <h4 style={{margin:'16px 0 12px', fontSize:'12px', color:'var(--text-secondary)'}}>Deducciones Fijas Mensuales</h4>
                 <div className="form-grid">
                     <div className="form-group"><label className="form-label">Depend. Adic. SFS</label><input className="form-control" type="number" min="0" max="10" value={empForm.dependientesSFS || 0} onChange={e => setEmpForm(f => ({...f, dependientesSFS: parseInt(e.target.value) || 0}))} placeholder="0" /><div className="form-help">Dependientes adicionales en seguro salud</div></div>
@@ -3032,6 +3074,14 @@ const App = () => {
                     <div className="form-group"><label className="form-label">Seguro Médico</label><input className="form-control" type="number" value={empForm.seguroPrivado} onChange={e => setEmpForm(f => ({...f, seguroPrivado: e.target.value}))} placeholder="0" /><div className="form-help">Seguro privado adicional</div></div>
                     <div className="form-group"><label className="form-label">Embargo/Pensión</label><input className="form-control" type="number" value={empForm.embargo} onChange={e => setEmpForm(f => ({...f, embargo: e.target.value}))} placeholder="0" /><div className="form-help">Deducciones judiciales</div></div>
                 </div>
+                <h4 style={{margin:'16px 0 12px', fontSize:'12px', color:'var(--text-secondary)'}}>📤 Desvinculación (solo si aplica)</h4>
+                <div className="form-grid">
+                    <div className="form-group"><label className="form-label">🚪 Fecha de Salida</label><input className="form-control" type="date" value={empForm.fechaSalida || ''} onChange={e => setEmpForm(f => ({...f, fechaSalida: e.target.value, activo: e.target.value ? false : f.activo}))} /><div className="form-help">Al colocar fecha, el empleado se desvincula de nóminas futuras</div></div>
+                    <div className="form-group"><label className="form-label">📝 Motivo de Salida</label><select className="form-control" value={empForm.motivoSalida || ''} onChange={e => setEmpForm(f => ({...f, motivoSalida: e.target.value}))}><option value="">Seleccionar...</option><option value="Renuncia">Renuncia voluntaria</option><option value="Despido">Despido</option><option value="Fin de contrato">Fin de contrato</option><option value="Jubilación">Jubilación</option><option value="Fallecimiento">Fallecimiento</option><option value="Abandono">Abandono de trabajo</option><option value="Mutuo acuerdo">Mutuo acuerdo</option><option value="Otro">Otro</option></select></div>
+                </div>
+                {empForm.fechaSalida && (
+                    <div className="alert alert-warning" style={{marginTop:'8px'}}><Icons.AlertCircle /><span><strong>Empleado desvinculado:</strong> No aparecerá en nuevas nóminas pero su historial de pagos se conservará para consultas.</span></div>
+                )}
                 <h4 style={{margin:'16px 0 12px', fontSize:'12px', color:'var(--text-secondary)'}}>Datos Bancarios</h4>
                 <div className="form-grid form-grid-3">
                     <div className="form-group"><label className="form-label">Banco</label><select className="form-control" value={empForm.banco} onChange={e => setEmpForm(f => ({...f, banco: e.target.value}))}><option value="">Seleccionar...</option>{BANCOS.map(b => <option key={b} value={b}>{b}</option>)}</select></div>
