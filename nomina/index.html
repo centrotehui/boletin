@@ -2636,58 +2636,45 @@ const App = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+                    background: 'linear-gradient(135deg, #0D47A1 0%, #1565C0 50%, #1E88E5 100%)',
                     padding: '20px'
                 }}>
                     <div style={{
-                        background: 'var(--bg-card)',
+                        background: 'white',
                         borderRadius: '16px',
-                        padding: '40px',
+                        padding: '32px',
                         width: '100%',
-                        maxWidth: '400px',
-                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-                        border: '1px solid var(--border-color)'
+                        maxWidth: '360px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
                     }}>
-                        {/* Logo */}
-                        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                            <div style={{
-                                width: '100px',
-                                height: '100px',
-                                margin: '0 auto 16px',
-                                borderRadius: '20px',
-                                overflow: 'hidden',
-                                boxShadow: '0 8px 20px rgba(0,0,0,0.3)'
-                            }}>
-                                <img 
-                                    src="data:image/png;base64,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"
-                                    alt="Centro Educativo Tehui"
-                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                />
-                            </div>
+                        {/* Logo Tehui */}
+                        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                            <img 
+                                src="data:image/png;base64,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"
+                                alt="Centro Educativo Tehui"
+                                style={{ width: '80px', height: '80px', objectFit: 'contain', marginBottom: '12px' }}
+                            />
                             <h1 style={{ 
-                                fontSize: '24px', 
+                                fontSize: '20px', 
                                 fontWeight: '700', 
                                 marginBottom: '4px',
-                                background: 'linear-gradient(135deg, var(--primary) 0%, var(--purple) 100%)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent'
+                                color: 'var(--primary)'
                             }}>
                                 Sistema de Nómina
                             </h1>
-                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                                 Centro Educativo de Formación Integral Tehui
                             </p>
-                            <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>
+                            <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', fontStyle: 'italic' }}>
                                 "Educando en valores con calidad"
                             </p>
                         </div>
                         
                         {/* Formulario */}
                         <form onSubmit={handleUserLogin}>
-                            <div style={{ marginBottom: '16px' }}>
-                                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '6px', color: 'var(--text-secondary)' }}>
-                                    <Icons.User style={{ width: '12px', height: '12px', marginRight: '4px', verticalAlign: 'middle' }} />
-                                    Usuario
+                            <div style={{ marginBottom: '14px' }}>
+                                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '5px', color: 'var(--text-secondary)' }}>
+                                    👤 Usuario
                                 </label>
                                 <input 
                                     type="text"
@@ -2695,14 +2682,13 @@ const App = () => {
                                     value={loginForm.usuario}
                                     onChange={e => setLoginForm(f => ({ ...f, usuario: e.target.value, error: '' }))}
                                     placeholder="Ingrese su usuario"
-                                    style={{ width: '100%' }}
+                                    style={{ width: '100%', padding: '10px 12px' }}
                                     autoFocus
                                 />
                             </div>
-                            <div style={{ marginBottom: '20px' }}>
-                                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '6px', color: 'var(--text-secondary)' }}>
-                                    <Icons.Lock style={{ width: '12px', height: '12px', marginRight: '4px', verticalAlign: 'middle' }} />
-                                    Contraseña
+                            <div style={{ marginBottom: '18px' }}>
+                                <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '5px', color: 'var(--text-secondary)' }}>
+                                    🔒 Contraseña
                                 </label>
                                 <input 
                                     type="password"
@@ -2710,7 +2696,7 @@ const App = () => {
                                     value={loginForm.password}
                                     onChange={e => setLoginForm(f => ({ ...f, password: e.target.value, error: '' }))}
                                     placeholder="Ingrese su contraseña"
-                                    style={{ width: '100%' }}
+                                    style={{ width: '100%', padding: '10px 12px' }}
                                 />
                             </div>
                             
@@ -2722,13 +2708,9 @@ const App = () => {
                                     borderRadius: '8px', 
                                     color: 'var(--danger)',
                                     fontSize: '12px',
-                                    marginBottom: '16px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
+                                    marginBottom: '14px'
                                 }}>
-                                    <Icons.AlertCircle style={{ width: '14px', height: '14px' }} />
-                                    {loginForm.error}
+                                    ⚠️ {loginForm.error}
                                 </div>
                             )}
                             
@@ -2737,20 +2719,19 @@ const App = () => {
                                 className="btn btn-primary"
                                 style={{ 
                                     width: '100%', 
-                                    padding: '12px',
+                                    padding: '11px',
                                     fontSize: '14px',
                                     fontWeight: '600'
                                 }}
                             >
-                                <Icons.LogIn style={{ marginRight: '8px' }} />
-                                Iniciar Sesión
+                                🔑 Iniciar Sesión
                             </button>
                         </form>
                         
                         <div style={{ 
-                            marginTop: '24px', 
-                            paddingTop: '20px', 
-                            borderTop: '1px solid var(--border-color)',
+                            marginTop: '20px', 
+                            paddingTop: '16px', 
+                            borderTop: '1px solid var(--border)',
                             textAlign: 'center'
                         }}>
                             <p style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
