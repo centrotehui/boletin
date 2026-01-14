@@ -1102,6 +1102,14 @@ const App = () => {
     const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false);
     const [cambioPasswordForm, setCambioPasswordForm] = useState({ actual: '', nueva: '', confirmar: '', error: '' });
     
+    // Estados de UI (toasts, loading)
+    const [toasts, setToasts] = useState([]);
+    const [loading, setLoading] = useState(false);
+    
+    // Funciones de Toast (definidas temprano para uso en autenticación)
+    const toast = (msg, type = 'info') => setToasts(p => [...p, { id: Date.now(), msg, type }]);
+    const removeToast = id => setToasts(p => p.filter(t => t.id !== id));
+    
     // Función de login
     const handleLogin = (e) => {
         e.preventDefault();
@@ -1178,8 +1186,6 @@ const App = () => {
     const [nominaEdits, setNominaEdits] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [filterDept, setFilterDept] = useState('TODOS');
-    const [loading, setLoading] = useState(false);
-    const [toasts, setToasts] = useState([]);
     
     // Estados de Configuración del Sistema (Mantenimiento)
     const [catalogos, setCatalogos] = useState({
@@ -1440,8 +1446,6 @@ const App = () => {
     };
 
     // Helpers
-    const toast = (msg, type = 'info') => setToasts(p => [...p, { id: Date.now(), msg, type }]);
-    const removeToast = id => setToasts(p => p.filter(t => t.id !== id));
     const openModal = name => setModals(m => ({ ...m, [name]: true }));
     const closeModal = name => setModals(m => ({ ...m, [name]: false }));
     const getPrestamosPend = empId => prestamos.filter(p => p.empleadoId === empId && p.activo && p.saldo > 0);
