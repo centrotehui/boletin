@@ -2333,7 +2333,7 @@ const App = () => {
                                 <tr>
                                     <th className="sticky-col">Empleado</th>
                                     <th>Salario</th>
-                                    {esBorrador && <><th>Aus.</th><th>Tard.</th><th>H.35%</th><th>H.100%</th><th>Bonif.</th></>}
+                                    {esBorrador && <><th>Aus.</th><th>Tard.</th><th>H.35%</th><th>H.100%</th><th>Bonif.</th><th>Comis.</th><th>Incent.</th><th>Viát.</th><th>+Otros</th><th>-Otros</th></>}
                                     <th>AFP</th>
                                     <th>SFS</th>
                                     <th>ISR</th>
@@ -2372,6 +2372,11 @@ const App = () => {
                                                     <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.horas35 || ''} onChange={e => updateEdit(d.empId, 'horas35', e.target.value)} placeholder="0" /></td>
                                                     <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.horas100 || ''} onChange={e => updateEdit(d.empId, 'horas100', e.target.value)} placeholder="0" /></td>
                                                     <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.bonificacion || ''} onChange={e => updateEdit(d.empId, 'bonificacion', e.target.value)} placeholder="0" /></td>
+                                                    <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.comisiones || ''} onChange={e => updateEdit(d.empId, 'comisiones', e.target.value)} placeholder="0" /></td>
+                                                    <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.incentivos || ''} onChange={e => updateEdit(d.empId, 'incentivos', e.target.value)} placeholder="0" /></td>
+                                                    <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.viaticos || ''} onChange={e => updateEdit(d.empId, 'viaticos', e.target.value)} placeholder="0" /></td>
+                                                    <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.otrosIng || ''} onChange={e => updateEdit(d.empId, 'otrosIng', e.target.value)} placeholder="0" /></td>
+                                                    <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.otrasDed || ''} onChange={e => updateEdit(d.empId, 'otrasDed', e.target.value)} placeholder="0" /></td>
                                                 </>}
                                                 <td className="money">{formatMoney(d.afpEmp)}</td>
                                                 <td className="money">{formatMoney(d.sfsEmp)}</td>
