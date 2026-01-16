@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Nómina Tehui v3.95 - Protección de Datos</title>
+    <title>Sistema de Nómina Tehui v3.96 - Correcciones Impresión y Correos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -595,7 +595,7 @@
                 top: 0; 
                 width: 100%; 
                 margin: 0;
-                padding: 10px;
+                padding: 5mm;
             }
             
             /* Excepción: cuando se imprimen volantes, el print-area NO debe ser absolute */
@@ -603,20 +603,23 @@
                 position: relative !important;
                 top: auto !important;
                 left: auto !important;
+                padding: 0 !important;
             }
             
             .no-print { display: none !important; }
             
-            /* Evitar páginas en blanco */
+            /* Evitar páginas en blanco - CRÍTICO */
             html, body {
                 height: auto !important;
+                min-height: 0 !important;
                 overflow: visible !important;
                 margin: 0 !important;
                 padding: 0 !important;
             }
             
-            /* Evitar páginas en blanco al final del documento */
-            html::after, body::after {
+            /* Eliminar cualquier espacio extra */
+            html::after, body::after,
+            .print-area::after {
                 content: none !important;
                 display: none !important;
             }
@@ -643,10 +646,12 @@
             }
             
             /* Ocultar elementos de la interfaz */
-            .sidebar, .toasts, .loading, header, nav, footer {
+            .sidebar, .toasts, .loading, header, nav, footer, .topbar, .page {
                 display: none !important;
                 height: 0 !important;
+                width: 0 !important;
                 overflow: hidden !important;
+                visibility: hidden !important;
             }
             
             /* Modal: ocultar decoración pero mostrar contenido */
@@ -656,6 +661,7 @@
                 left: 0 !important;
                 width: 100% !important;
                 height: auto !important;
+                min-height: 0 !important;
                 background: transparent !important;
                 padding: 0 !important;
                 margin: 0 !important;
@@ -667,6 +673,7 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 height: auto !important;
+                min-height: 0 !important;
                 max-height: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -684,6 +691,7 @@
                 padding: 0 !important;
                 max-height: none !important;
                 overflow: visible !important;
+                min-height: 0 !important;
             }
             
             .app, .main {
@@ -691,6 +699,7 @@
                 min-height: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                margin-left: 0 !important;
             }
             
             /* Por defecto: landscape para tablas de nómina */
@@ -713,11 +722,12 @@
                 padding: 0 !important;
             }
             
-            /* Fondos claros para impresión */
-            .print-area table { background: #fff !important; }
-            .print-area th { background: #e0e0e0 !important; color: #000 !important; border: 1px solid #000 !important; }
-            .print-area td { border: 1px solid #999 !important; background: #fff !important; }
-            .print-area tr:nth-child(even) td { background: #f5f5f5 !important; }
+            /* Fondos transparentes para impresión - AHORRO DE TINTA */
+            .print-area table { background: transparent !important; }
+            .print-area th { background: transparent !important; color: #000 !important; border: 1px solid #000 !important; font-weight: bold !important; }
+            .print-area td { border: 1px solid #999 !important; background: transparent !important; }
+            .print-area tr:nth-child(even) td { background: transparent !important; }
+            .print-area tr:nth-child(odd) td { background: transparent !important; }
             
             /* Cuando hay volantes, cambiar a portrait */
             .print-area:has(.volante) {
@@ -726,26 +736,28 @@
             
             /* ========== VOLANTES - FORZAR 3 POR PÁGINA ========== */
             @page volantes {
-                margin: 4mm 6mm;
+                margin: 5mm 8mm;
                 size: letter portrait;
             }
             .volante { page: volantes; }
             
-            /* Carta portrait: 279mm alto - 8mm márgenes = 271mm. 3 volantes × 88mm + 2 × 2mm = 268mm ✓ */
+            /* Carta portrait: 279mm alto - 10mm márgenes = 269mm. 3 volantes × 86mm + 2 × 3mm gaps = 264mm ✓ */
             .volante { 
                 border: 1px solid #000 !important; 
                 background: #fff !important; 
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 margin: 0 !important;
-                margin-bottom: 2mm !important;
+                margin-bottom: 3mm !important;
                 padding: 2mm 3mm !important;
                 width: 100% !important;
                 box-sizing: border-box !important;
-                height: 88mm !important;
-                min-height: 88mm !important;
-                max-height: 88mm !important;
+                height: 86mm !important;
+                min-height: 86mm !important;
+                max-height: 86mm !important;
                 overflow: hidden !important;
+                display: flex !important;
+                flex-direction: column !important;
             }
             
             /* Primer volante sin margen superior */
@@ -754,7 +766,14 @@
             /* Cada 3er volante fuerza salto de página después */
             .volante:nth-child(3n) { 
                 page-break-after: always !important;
+                break-after: page !important;
                 margin-bottom: 0 !important;
+            }
+            
+            /* Último volante: sin salto de página después */
+            .volante:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
             
             /* Header */
@@ -797,12 +816,12 @@
             }
             .volante-col h4 { 
                 font-size: 9pt !important; 
-                background: #e0e0e0 !important;
-                border: 1px solid #999 !important;
+                background: transparent !important;
+                border: 1px solid #333 !important;
                 padding: 1mm !important;
                 margin: 0 0 1mm 0 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                text-align: center !important;
+                font-weight: bold !important;
             }
             .volante-row { font-size: 9pt !important; padding: 0.5mm 1mm !important; }
             .volante-row.total-row { 
@@ -823,31 +842,33 @@
             .volante-firma { flex: 1 !important; text-align: center !important; }
             .volante-firma-line { border-bottom: 1px solid #000 !important; height: 12mm !important; }
             .volante-firma span { font-size: 7pt !important; }
+            
+            /* NETO - Sin fondo negro, solo borde grueso para ahorro de tinta */
             .volante-neto {
                 flex: 1 !important;
-                background: #000 !important;
-                color: #fff !important;
+                background: transparent !important;
+                color: #000 !important;
                 padding: 2mm !important;
                 text-align: center !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                border: 2px solid #000 !important;
             }
-            .volante-neto label { font-size: 8pt !important; color: #fff !important; }
-            .volante-neto .monto { font-size: 13pt !important; color: #fff !important; font-weight: bold !important; }
+            .volante-neto label { font-size: 8pt !important; color: #000 !important; font-weight: bold !important; }
+            .volante-neto .monto { font-size: 13pt !important; color: #000 !important; font-weight: bold !important; }
             .volante-totales-ded { flex: 0.8 !important; font-size: 8pt !important; }
             }
             
-            /* Datos en línea horizontal */
+            /* Datos en línea horizontal - Sin fondo */
             .volante-datos-linea { 
                 display: flex !important;
                 gap: 2mm !important;
-                background: #f0f0f0 !important;
+                background: transparent !important;
                 padding: 0.8mm 1.5mm !important;
                 margin-bottom: 1mm !important;
                 flex-shrink: 0 !important;
+                border: 1px solid #999 !important;
             }
             .volante-datos-linea div { flex: 1 !important; }
-            .volante-datos-linea label { font-size: 5px !important; color: #555 !important; text-transform: uppercase !important; }
+            .volante-datos-linea label { font-size: 5px !important; color: #333 !important; text-transform: uppercase !important; }
             .volante-datos-linea span { font-size: 8px !important; font-weight: 600 !important; }
             
             /* Detalle de ingresos y deducciones */
@@ -869,10 +890,11 @@
                 font-size: 7px !important; 
                 padding: 0.4mm 1mm !important; 
                 margin-bottom: 0.4mm !important;
-                background: #e0e0e0 !important;
-                border: 1px solid #999 !important;
+                background: transparent !important;
+                border: 1px solid #333 !important;
                 font-weight: bold !important;
                 flex-shrink: 0 !important;
+                text-align: center !important;
             }
             .volante-linea { 
                 font-size: 8px !important; 
@@ -886,12 +908,12 @@
                 font-weight: bold !important;
                 border-top: 1px solid #333 !important;
                 font-size: 8px !important;
-                background: #e8e8e8 !important;
+                background: transparent !important;
             }
             
-            /* Ausencias más visibles */
+            /* Ausencias - Sin fondo */
             .volante-ausencias {
-                background: #f5f5f5 !important;
+                background: transparent !important;
                 font-weight: 600 !important;
             }
             
@@ -917,10 +939,12 @@
                 font-size: 5px !important;
                 color: #333 !important;
             }
+            
+            /* NETO BOX - Sin fondo gris, solo borde */
             .volante-neto-box {
                 flex: 1.2 !important;
-                background: #d0d0d0 !important;
-                border: 1px solid #000 !important;
+                background: transparent !important;
+                border: 2px solid #000 !important;
                 padding: 0.8mm !important;
                 text-align: center !important;
             }
@@ -934,21 +958,10 @@
                 font-weight: bold !important;
             }
             
-            /* Salto de página después de cada 3 volantes */
-            .volante:nth-child(3n) {
-                page-break-after: always !important;
-                break-after: page !important;
-                margin-bottom: 0 !important;
-            }
-            /* No salto después del último */
-            .volante:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
-                margin-bottom: 0 !important;
-            }
+            /* Estilos ya definidos arriba para nth-child(3n) y last-child */
             
-            /* Neto destacado sin color */
-            .neto-print { background: #d0d0d0 !important; font-weight: bold !important; border: 2px solid #000 !important; }
+            /* Neto destacado - Solo borde, sin fondo */
+            .neto-print { background: transparent !important; font-weight: bold !important; border: 2px solid #000 !important; }
             
             /* Cuando se imprimen volantes desde el modal */
             body.printing-volantes * {
@@ -1028,15 +1041,23 @@
             body.printing-volantes .volante {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
-                margin-bottom: 2mm !important;
-                height: 88mm !important;
-                min-height: 88mm !important;
-                max-height: 88mm !important;
+                margin-bottom: 3mm !important;
+                height: 86mm !important;
+                min-height: 86mm !important;
+                max-height: 86mm !important;
+                display: flex !important;
+                flex-direction: column !important;
             }
             
             body.printing-volantes .volante:nth-child(3n) {
                 page-break-after: always !important;
+                break-after: page !important;
                 margin-bottom: 0 !important;
+            }
+            
+            body.printing-volantes .volante:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
             
             /* ========== ESTILOS IMPRESIÓN CHECKLIST PAGOS POR BANCO ========== */
@@ -1106,7 +1127,7 @@
                 border: 1px solid #333 !important;
                 padding: 5px 8px !important;
                 font-size: 10px !important;
-                background: white !important;
+                background: transparent !important;
             }
             
             body.printing-checklist .print-pagos-banco th {
@@ -1114,21 +1135,39 @@
                 font-size: 9px !important;
             }
             
-            /* Quitar todos los colores de fondo */
-            body.printing-checklist .print-pagos-banco div[style*="background"] {
-                background: white !important;
+            /* ===== AHORRO DE TINTA - Quitar todos los fondos de colores ===== */
+            body.printing-checklist .print-pagos-banco div[style*="background"],
+            body.printing-checklist .print-pagos-banco [style*="background"] {
+                background: transparent !important;
+                background-color: transparent !important;
                 color: #000 !important;
                 border: 1px solid #333 !important;
+            }
+            
+            /* Headers de banco - sin fondo de color, solo borde */
+            body.printing-checklist .print-pagos-banco div[style*="background:"][style*="color: 'white'"],
+            body.printing-checklist .print-pagos-banco div[style*="background:"][style*="color: white"] {
+                background: transparent !important;
+                color: #000 !important;
+                border: 2px solid #000 !important;
+                font-weight: bold !important;
             }
             
             body.printing-checklist .print-pagos-banco span[style*="color"] {
                 color: #000 !important;
             }
             
+            /* Resumen rápido - sin fondo */
+            body.printing-checklist .print-pagos-banco div[style*="background: '#f5f5f5'"],
+            body.printing-checklist .print-pagos-banco div[style*="background: '#333'"] {
+                background: transparent !important;
+                border: 1px solid #333 !important;
+            }
+            
             /* Checkbox */
             body.printing-checklist .print-pagos-banco div[style*="border: 2px solid"] {
                 border: 2px solid #000 !important;
-                background: white !important;
+                background: transparent !important;
             }
             
             /* Ocultar nota de EPSON en impresión */
@@ -1140,6 +1179,30 @@
             @page {
                 margin: 5mm !important;
                 size: letter landscape !important;
+            }
+        }
+        
+        /* ========== ESTILOS GLOBALES DE AHORRO DE TINTA PARA IMPRESIÓN ========== */
+        @media print {
+            /* Quitar fondos de todas las áreas de impresión */
+            .print-area th,
+            .print-area [style*="background: '#d0d0d0'"],
+            .print-area [style*="background: '#e0e0e0'"],
+            .print-area [style*="background: '#e8e8e8'"],
+            .print-area [style*="background: '#f0f0f0'"],
+            .print-area [style*="background: '#f5f5f5'"],
+            .print-area [style*="background: '#c8c8c8'"],
+            .print-area [style*="background: '#b0b0b0'"],
+            .print-area [style*="background: '#909090'"],
+            .print-area [style*="background: '#333'"] {
+                background: transparent !important;
+                background-color: transparent !important;
+            }
+            
+            /* Destacar totales con bordes en lugar de fondos */
+            .print-area [style*="fontWeight: 'bold'"],
+            .print-area [style*="font-weight: bold"] {
+                border-width: 1px !important;
             }
         }
         
@@ -1216,13 +1279,13 @@
                 border: 1px solid #333 !important;
                 padding: 3px 5px !important;
                 font-size: 8px !important;
+                background: transparent !important;
             }
             
             body.printing-reportes .reporte-print-area th {
-                background: #e0e0e0 !important;
+                background: transparent !important;
                 font-weight: bold !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                border: 1px solid #000 !important;
             }
             
             body.printing-reportes .reporte-seccion {
@@ -1233,6 +1296,104 @@
             body.printing-reportes .reporte-firmas {
                 page-break-inside: avoid !important;
                 margin-top: 20px !important;
+            }
+        }
+        
+        /* ========== ESTILOS IMPRESIÓN NÓMINA (SIN PÁGINAS EN BLANCO + AHORRO TINTA) ========== */
+        @media print {
+            body.printing-nomina * {
+                visibility: hidden !important;
+            }
+            
+            body.printing-nomina .print-area,
+            body.printing-nomina .print-area * {
+                visibility: visible !important;
+            }
+            
+            body.printing-nomina .print-area {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 5mm !important;
+            }
+            
+            body.printing-nomina .sidebar,
+            body.printing-nomina .topbar,
+            body.printing-nomina .page,
+            body.printing-nomina .main,
+            body.printing-nomina .app,
+            body.printing-nomina .toasts,
+            body.printing-nomina .loading {
+                display: none !important;
+                visibility: hidden !important;
+            }
+            
+            body.printing-nomina table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                page-break-inside: auto !important;
+            }
+            
+            body.printing-nomina tr {
+                page-break-inside: avoid !important;
+            }
+            
+            body.printing-nomina thead {
+                display: table-header-group !important;
+            }
+            
+            /* ===== AHORRO DE TINTA - Quitar todos los fondos ===== */
+            body.printing-nomina th,
+            body.printing-nomina td,
+            body.printing-nomina tr,
+            body.printing-nomina div,
+            body.printing-nomina h3,
+            body.printing-nomina [style*="background"] {
+                background: transparent !important;
+                background-color: transparent !important;
+            }
+            
+            /* Headers de tabla - solo borde, sin fondo */
+            body.printing-nomina th {
+                border: 1px solid #000 !important;
+                font-weight: bold !important;
+            }
+            
+            /* Filas - sin colores alternados */
+            body.printing-nomina tr:nth-child(even) td,
+            body.printing-nomina tr:nth-child(odd) td {
+                background: transparent !important;
+            }
+            
+            /* Neto - destacar con borde grueso en lugar de fondo */
+            body.printing-nomina td[style*="background: '#e8e8e8'"],
+            body.printing-nomina td[style*="background: '#c8c8c8'"],
+            body.printing-nomina td[style*="background: '#b0b0b0'"],
+            body.printing-nomina td[style*="background: '#909090'"],
+            body.printing-nomina [style*="background: '#d0d0d0'"] {
+                background: transparent !important;
+                border: 2px solid #000 !important;
+            }
+            
+            /* Encabezados de departamento - sin fondo */
+            body.printing-nomina tr[style*="background: '#f0f0f0'"] td,
+            body.printing-nomina tr[style*="background: '#e0e0e0'"] td {
+                background: transparent !important;
+                border-top: 2px solid #000 !important;
+            }
+            
+            /* Evitar página en blanco al final */
+            body.printing-nomina .print-area::after {
+                content: none !important;
+                display: none !important;
+            }
+            
+            /* Firmas siempre juntas */
+            body.printing-nomina [style*="gridTemplateColumns: '1fr 1fr 1fr'"],
+            body.printing-nomina div[style*="display: 'grid'"][style*="gap: '25px'"] {
+                page-break-inside: avoid !important;
             }
         }
         
@@ -5330,6 +5491,7 @@ const App = () => {
     const [editingEmp, setEditingEmp] = useState(null);
     const [selectedEmp, setSelectedEmp] = useState(null);
     const [selectedVolante, setSelectedVolante] = useState(null);
+    const [selectedForEmail, setSelectedForEmail] = useState(new Set()); // IDs de empleados seleccionados para enviar correo
     const [ausenciasEmpId, setAusenciasEmpId] = useState(null); // Empleado seleccionado para registrar ausencias
     
     // Estados para envío de volantes por email
@@ -6512,9 +6674,13 @@ const App = () => {
     // Función para imprimir nómina
     const imprimirNomina = () => {
         setModoImpresionNomina(true);
+        document.body.classList.add('printing-nomina');
         setTimeout(() => {
             window.print();
-            setTimeout(() => setModoImpresionNomina(false), 500);
+            setTimeout(() => {
+                setModoImpresionNomina(false);
+                document.body.classList.remove('printing-nomina');
+            }, 500);
         }, 100);
     };
     
@@ -6764,6 +6930,67 @@ const App = () => {
             await new Promise(resolve => setTimeout(resolve, 800));
         }
         
+        toast(`Envío completado: ${enviados} exitosos, ${errores} fallidos`, enviados > 0 ? 'success' : 'error');
+    };
+    
+    // Funciones para selección de empleados para envío de correo
+    const toggleEmailSelection = (empId) => {
+        setSelectedForEmail(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(empId)) {
+                newSet.delete(empId);
+            } else {
+                newSet.add(empId);
+            }
+            return newSet;
+        });
+    };
+    
+    const toggleSelectAllForEmail = () => {
+        if (!volantesData) return;
+        const conEmail = volantesData.filter(v => v.emp.email && !isVolanteEnviado(v.emp.id));
+        if (selectedForEmail.size === conEmail.length) {
+            setSelectedForEmail(new Set());
+        } else {
+            setSelectedForEmail(new Set(conEmail.map(v => v.emp.id)));
+        }
+    };
+    
+    const enviarSeleccionados = async () => {
+        if (selectedForEmail.size === 0) {
+            toast('Seleccione al menos un empleado', 'warning');
+            return;
+        }
+        
+        if (!msUser) {
+            toast('Debe iniciar sesión con Microsoft para enviar correos', 'warning');
+            return;
+        }
+        
+        const seleccionados = volantesData.filter(v => selectedForEmail.has(v.emp.id) && v.emp.email);
+        
+        if (seleccionados.length === 0) {
+            toast('Los empleados seleccionados no tienen email', 'warning');
+            return;
+        }
+        
+        if (!confirm(`¿Enviar volante por email a ${seleccionados.length} empleado(s) seleccionado(s)?\n\nLos correos se enviarán desde: ${msUser.username}`)) return;
+        
+        let enviados = 0;
+        let errores = 0;
+        
+        for (const v of seleccionados) {
+            const resultado = await enviarVolanteEmail(v.emp, v.det);
+            if (resultado) {
+                enviados++;
+                selectedForEmail.delete(v.emp.id);
+            } else {
+                errores++;
+            }
+            await new Promise(resolve => setTimeout(resolve, 800));
+        }
+        
+        setSelectedForEmail(new Set(selectedForEmail));
         toast(`Envío completado: ${enviados} exitosos, ${errores} fallidos`, enviados > 0 ? 'success' : 'error');
     };
     
@@ -9056,16 +9283,19 @@ const App = () => {
             </Modal>
 
             {/* Modal Volantes */}
-            <Modal open={modals.volantes} onClose={() => { closeModal('volantes'); setSelectedVolante(null); }} title="Volantes de Pago" size="xl" footer={<><button className="btn btn-secondary" onClick={() => closeModal('volantes')}>Cerrar</button><button className="btn btn-info" onClick={enviarTodosVolantes} disabled={!msUser} title={msUser ? 'Enviar volantes a todos los empleados con email' : 'Inicie sesión con Microsoft para enviar correos'}><Icons.Mail /> Enviar a Todos</button><button className="btn btn-primary" onClick={imprimirVolantes}><Icons.Printer /> Imprimir</button></>}>
+            <Modal open={modals.volantes} onClose={() => { closeModal('volantes'); setSelectedVolante(null); setSelectedForEmail(new Set()); }} title="Volantes de Pago" size="xl" footer={<><button className="btn btn-secondary" onClick={() => closeModal('volantes')}>Cerrar</button><button className="btn btn-success" onClick={enviarSeleccionados} disabled={!msUser || selectedForEmail.size === 0} title={msUser ? `Enviar a ${selectedForEmail.size} seleccionados` : 'Inicie sesión con Microsoft'}><Icons.Mail /> Enviar Seleccionados ({selectedForEmail.size})</button><button className="btn btn-info" onClick={enviarTodosVolantes} disabled={!msUser} title={msUser ? 'Enviar volantes a todos los empleados con email' : 'Inicie sesión con Microsoft para enviar correos'}><Icons.Mail /> Enviar a Todos</button><button className="btn btn-primary" onClick={imprimirVolantes}><Icons.Printer /> Imprimir</button></>}>
                 {/* Panel de envío por email */}
                 <div className="no-print" style={{marginBottom:'16px', padding:'12px', background:'#f0f9ff', border:'1px solid #0ea5e9', borderRadius:'8px'}}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
                         <div>
                             <strong style={{color:'#0369a1'}}>📧 Envío de Volantes por Email (Microsoft 365)</strong>
-                            <p style={{fontSize:'11px', color:'#64748b', margin:'4px 0 0'}}>Los correos se envían desde su cuenta institucional de Microsoft</p>
+                            <p style={{fontSize:'11px', color:'#64748b', margin:'4px 0 0'}}>Seleccione los empleados a quienes desea enviar el detalle de pago</p>
                         </div>
-                        <div style={{fontSize:'12px'}}>
-                            <span style={{background:'#22c55e', color:'white', padding:'2px 8px', borderRadius:'12px', marginRight:'8px'}}>
+                        <div style={{fontSize:'12px', display:'flex', gap:'8px', alignItems:'center'}}>
+                            <span style={{background:'#3b82f6', color:'white', padding:'2px 8px', borderRadius:'12px'}}>
+                                ☑️ {selectedForEmail.size} seleccionados
+                            </span>
+                            <span style={{background:'#22c55e', color:'white', padding:'2px 8px', borderRadius:'12px'}}>
                                 ✓ {volantesData.filter(v => isVolanteEnviado(v.emp.id)).length} enviados
                             </span>
                             <span style={{background:'#f59e0b', color:'white', padding:'2px 8px', borderRadius:'12px'}}>
@@ -9073,10 +9303,20 @@ const App = () => {
                             </span>
                         </div>
                     </div>
-                    <div style={{maxHeight:'200px', overflowY:'auto', border:'1px solid #e2e8f0', borderRadius:'6px', background:'white'}}>
+                    <div style={{maxHeight:'250px', overflowY:'auto', border:'1px solid #e2e8f0', borderRadius:'6px', background:'white'}}>
                         <table style={{width:'100%', fontSize:'11px', borderCollapse:'collapse'}}>
-                            <thead style={{position:'sticky', top:0, background:'#f8fafc'}}>
+                            <thead style={{position:'sticky', top:0, background:'#f8fafc', zIndex:1}}>
                                 <tr>
+                                    <th style={{padding:'8px', textAlign:'center', borderBottom:'1px solid #e2e8f0', width:'40px'}}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={volantesData.filter(v => v.emp.email && !isVolanteEnviado(v.emp.id)).length > 0 && 
+                                                    selectedForEmail.size === volantesData.filter(v => v.emp.email && !isVolanteEnviado(v.emp.id)).length}
+                                            onChange={toggleSelectAllForEmail}
+                                            style={{width:'16px', height:'16px', cursor:'pointer'}}
+                                            title="Seleccionar/Deseleccionar todos"
+                                        />
+                                    </th>
                                     <th style={{padding:'8px', textAlign:'left', borderBottom:'1px solid #e2e8f0'}}>Empleado</th>
                                     <th style={{padding:'8px', textAlign:'left', borderBottom:'1px solid #e2e8f0'}}>Email</th>
                                     <th style={{padding:'8px', textAlign:'right', borderBottom:'1px solid #e2e8f0'}}>Neto</th>
@@ -9086,7 +9326,17 @@ const App = () => {
                             </thead>
                             <tbody>
                                 {volantesData.map((v, i) => (
-                                    <tr key={i} style={{background: i % 2 === 0 ? '#fff' : '#f8fafc'}}>
+                                    <tr key={i} style={{background: selectedForEmail.has(v.emp.id) ? '#eff6ff' : (i % 2 === 0 ? '#fff' : '#f8fafc')}}>
+                                        <td style={{padding:'6px 8px', textAlign:'center'}}>
+                                            {v.emp.email && !isVolanteEnviado(v.emp.id) && (
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={selectedForEmail.has(v.emp.id)}
+                                                    onChange={() => toggleEmailSelection(v.emp.id)}
+                                                    style={{width:'16px', height:'16px', cursor:'pointer'}}
+                                                />
+                                            )}
+                                        </td>
                                         <td style={{padding:'6px 8px', fontWeight:'500'}}>{v.emp.nombre}</td>
                                         <td style={{padding:'6px 8px', color: v.emp.email ? '#334155' : '#94a3b8'}}>
                                             {v.emp.email || <em>Sin email</em>}
