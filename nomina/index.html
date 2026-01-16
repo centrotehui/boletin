@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Nómina Tehui v4.01 - Correcciones Impresión y Correos</title>
+    <title>Sistema de Nómina Tehui v4.02 - Corrección Impresión Volantes</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -414,6 +414,15 @@
         .print-only { display: none; }
         
         /* ========== VOLANTE - DISEÑO COMPACTO 3 POR PÁGINA ========== */
+        /* Contenedor de volantes */
+        .volantes-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            background: #f5f5f5;
+        }
+        
         .volante {
             border: 1px solid #000;
             padding: 8px 10px;
@@ -508,6 +517,15 @@
         .volante-row .monto { 
             font-family: 'Consolas', 'Courier New', monospace;
             text-align: right;
+        }
+        
+        /* Detalle de fechas de ausencias */
+        .volante-ausencias-detalle {
+            font-size: 8px !important;
+            color: #666 !important;
+            border-bottom: none !important;
+            padding-top: 0 !important;
+            margin-top: -2px !important;
         }
         
         /* Pie: Totales y Firma */
@@ -959,6 +977,18 @@
                 font-weight: 600 !important;
             }
             
+            /* Detalle de fechas de ausencias en impresión */
+            .volante-ausencias-detalle {
+                font-size: 7px !important;
+                color: #333 !important;
+                border-bottom: none !important;
+                padding: 0 0.8mm !important;
+                margin-top: -1px !important;
+            }
+            .volante-ausencias-detalle span {
+                font-style: italic !important;
+            }
+            
             /* Pie: Firmas + NETO en una fila */
             .volante-pie {
                 display: flex !important;
@@ -1080,9 +1110,14 @@
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 0 !important;
+                background: white !important;
             }
             
             /* CADA VOLANTE: altura fija 88mm para 3 por página */
+            /* Carta portrait: 279mm alto - 10mm márgenes = 269mm. 3 volantes × 88mm = 264mm */
             body.printing-volantes .volante {
                 page: volantes-page;
                 box-sizing: border-box !important;
@@ -1090,8 +1125,7 @@
                 height: 88mm !important;
                 min-height: 88mm !important;
                 max-height: 88mm !important;
-                margin: 0 !important;
-                margin-bottom: 1mm !important;
+                margin: 0 0 1mm 0 !important;
                 padding: 2mm 3mm !important;
                 border: 1px solid #000 !important;
                 background: white !important;
@@ -1100,9 +1134,10 @@
                 flex-direction: column !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+                flex-shrink: 0 !important;
             }
             
-            /* Primer volante de cada página: sin margen superior */
+            /* Primer volante de cada grupo de 3: sin margen superior */
             body.printing-volantes .volante:nth-child(3n+1) {
                 margin-top: 0 !important;
             }
@@ -1114,7 +1149,7 @@
                 margin-bottom: 0 !important;
             }
             
-            /* Último volante: sin salto de página */
+            /* Último volante: sin salto de página después */
             body.printing-volantes .volante:last-child {
                 page-break-after: auto !important;
                 break-after: auto !important;
@@ -1396,20 +1431,28 @@
                 visibility: visible !important;
             }
             
-            /* Ocultar elementos de UI específicamente */
+            /* IMPORTANTE: Mantener display de contenedores padres para que print-area sea visible */
+            body.printing-nomina .app,
+            body.printing-nomina .main {
+                display: block !important;
+                visibility: hidden !important;
+                position: static !important;
+                overflow: visible !important;
+            }
+            
+            /* Ocultar elementos de UI específicamente - solo visibility, no display */
             body.printing-nomina .sidebar,
             body.printing-nomina .topbar,
             body.printing-nomina .page,
-            body.printing-nomina .main,
-            body.printing-nomina .app,
             body.printing-nomina .toasts,
             body.printing-nomina .loading,
             body.printing-nomina .modal-backdrop,
             body.printing-nomina .modal {
-                display: none !important;
                 visibility: hidden !important;
                 height: 0 !important;
                 overflow: hidden !important;
+                position: absolute !important;
+                left: -9999px !important;
             }
             
             body.printing-nomina table {
@@ -4379,8 +4422,17 @@ const Volante = ({ emp, det, periodo, config, nominaCodigo }) => {
                     )}
                     {det.descAusencias > 0 && (
                         <div className="volante-row">
-                            <span>Ausencias</span>
+                            <span>Ausencias{det.diasAus > 0 ? ` (${det.diasAus} día${det.diasAus > 1 ? 's' : ''})` : ''}</span>
                             <span className="monto">{formatMoney(det.descAusencias)}</span>
+                        </div>
+                    )}
+                    {det.fechasAus && det.fechasAus.length > 0 && (
+                        <div className="volante-row volante-ausencias-detalle" style={{fontSize:'8px', color:'#666', paddingTop:'0', marginTop:'-2px'}}>
+                            <span style={{fontStyle:'italic'}}>Fechas: {det.fechasAus.map(f => {
+                                const fecha = new Date(f);
+                                return `${fecha.getDate()}/${fecha.getMonth()+1}`;
+                            }).join(', ')}</span>
+                            <span></span>
                         </div>
                     )}
                     {det.embargo > 0 && (
@@ -9630,8 +9682,8 @@ const App = () => {
                     </div>
                 </div>
                 
-                {/* Área de impresión */}
-                <div className="print-area">
+                {/* Área de impresión - Contenedor de volantes */}
+                <div className="volantes-container">
                     {volantesData.map((v, i) => <Volante key={i} emp={v.emp} det={v.det} periodo={currentNomina?.periodo} config={config} nominaCodigo={currentNomina?.codigo} />)}
                 </div>
             </Modal>
