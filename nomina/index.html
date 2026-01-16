@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Nómina Tehui v3.91 - Protección de Datos</title>
+    <title>Sistema de Nómina Tehui v3.93 - Protección de Datos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -410,31 +410,164 @@
         
         /* Print */
         .print-only { display: none; }
-        /* Volante - Nuevo Layout Optimizado */
-        .volante { border: 1px solid #333; padding: 12px; margin-bottom: 15px; page-break-inside: avoid; font-size: 10px; }
-        .volante-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 6px; margin-bottom: 8px; }
-        .volante-empresa-info strong { font-size: 12px; display: block; }
-        .volante-empresa-info span { font-size: 8px; color: #666; }
-        .volante-tipo { text-align: right; }
-        .volante-tipo strong { font-size: 11px; display: block; }
-        .volante-tipo span { font-size: 9px; color: #444; }
-        .volante-nombre-grande { font-size: 16px; font-weight: bold; padding: 6px 0; border-bottom: 1px solid #ccc; margin-bottom: 6px; }
-        .volante-datos-linea { display: flex; gap: 20px; background: #f5f5f5; padding: 6px 10px; margin-bottom: 8px; border-radius: 4px; }
-        .volante-datos-linea div { flex: 1; }
-        .volante-datos-linea label { font-size: 8px; color: #666; text-transform: uppercase; }
-        .volante-datos-linea span { font-weight: 600; font-size: 10px; }
-        .volante-detalle { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
-        .volante-seccion h4 { font-size: 10px; background: #e0e0e0; padding: 4px 6px; margin-bottom: 4px; }
-        .volante-linea { display: flex; justify-content: space-between; padding: 2px 4px; font-size: 9px; border-bottom: 1px dotted #ccc; }
-        .volante-linea:last-child { border-bottom: none; }
-        .volante-linea.total { background: #f0f0f0; font-weight: bold; border-top: 1px solid #333; margin-top: 4px; padding-top: 4px; }
-        .volante-pie { display: flex; align-items: flex-end; gap: 15px; margin-top: 10px; }
-        .volante-firma-box { flex: 1; text-align: center; }
-        .volante-firma-box .volante-firma-linea { border-top: 1px solid #333; margin-bottom: 2px; height: 20px; }
-        .volante-firma-box span { font-size: 8px; color: #666; }
-        .volante-neto-box { flex: 1.5; background: #333; color: white; padding: 8px; text-align: center; border-radius: 4px; border: 2px solid #000; }
-        .volante-neto-box label { font-size: 8px; opacity: 0.9; display: block; }
-        .volante-neto-box span { font-size: 18px; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
+        
+        /* ========== VOLANTE - DISEÑO COMPACTO 3 POR PÁGINA ========== */
+        .volante {
+            border: 1px solid #000;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            page-break-inside: avoid;
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            background: #fff;
+        }
+        
+        /* Header: Empresa centrada */
+        .volante-header {
+            text-align: center;
+            border-bottom: 1px solid #000;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+        .volante-header h2 {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 0;
+            font-style: italic;
+        }
+        .volante-header p {
+            font-size: 9px;
+            margin: 1px 0;
+            font-style: italic;
+        }
+        
+        /* Info row: ID, Período, Nómina# */
+        .volante-info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-bottom: 4px;
+            padding: 2px 0;
+        }
+        .volante-info-row span { font-weight: normal; }
+        
+        /* Datos empleado */
+        .volante-empleado {
+            margin-bottom: 6px;
+        }
+        .volante-empleado-nombre {
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .volante-empleado-datos {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            padding: 3px 0;
+            border-top: 1px solid #ccc;
+            border-bottom: 1px solid #ccc;
+        }
+        .volante-empleado-datos span { display: flex; gap: 4px; }
+        .volante-empleado-datos label { font-weight: normal; color: #555; font-size: 9px; }
+        
+        /* Grid de Ingresos y Deducciones */
+        .volante-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .volante-col h4 {
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            background: #e8e8e8;
+            border: 1px solid #999;
+            padding: 2px 4px;
+            margin: 0 0 3px 0;
+        }
+        .volante-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            padding: 1px 3px;
+            border-bottom: 1px dotted #ccc;
+        }
+        .volante-row:last-child { border-bottom: none; }
+        .volante-row.total-row {
+            border-top: 1px solid #000;
+            border-bottom: none;
+            font-weight: bold;
+            padding-top: 3px;
+            margin-top: 3px;
+        }
+        .volante-row .monto { 
+            font-family: 'Consolas', 'Courier New', monospace;
+            text-align: right;
+        }
+        
+        /* Pie: Totales y Firma */
+        .volante-footer {
+            display: flex;
+            align-items: stretch;
+            gap: 10px;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #000;
+        }
+        .volante-firma {
+            flex: 1;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        .volante-firma-line {
+            border-bottom: 1px solid #000;
+            height: 18px;
+            margin-bottom: 2px;
+        }
+        .volante-firma span {
+            font-size: 8px;
+            color: #555;
+        }
+        .volante-neto {
+            flex: 1.2;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            padding: 6px 8px;
+            border: 2px solid #000;
+        }
+        .volante-neto label {
+            font-size: 9px;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .volante-neto .monto {
+            font-size: 16px;
+            font-weight: bold;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+        .volante-totales-ded {
+            flex: 0.8;
+            text-align: right;
+            font-size: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .volante-totales-ded div {
+            display: flex;
+            justify-content: space-between;
+            padding: 1px 0;
+        }
+        .volante-totales-ded .monto {
+            font-family: 'Consolas', 'Courier New', monospace;
+            margin-left: 8px;
+        }
         
         /* Responsive */
         @media (max-width: 1400px) { .stats { grid-template-columns: repeat(3, 1fr); } }
@@ -592,62 +725,115 @@
             }
             
             /* ========== VOLANTES - FORZAR 3 POR PÁGINA ========== */
-            /* Usar portrait para volantes */
-            .volante {
-                page: volantes;
-            }
             @page volantes {
-                margin: 2mm 3mm;
+                margin: 5mm 8mm;
                 size: letter portrait;
             }
+            .volante { page: volantes; }
             
-            /* Carta portrait: 279mm - 4mm márgenes = 275mm. 3 volantes = 91mm c/u */
+            /* Carta portrait: 279mm alto - 10mm márgenes = 269mm. 3 volantes = ~88mm c/u */
             .volante { 
                 border: 1px solid #000 !important; 
                 background: #fff !important; 
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 margin: 0 !important;
-                margin-bottom: 1mm !important;
-                padding: 1.5mm 2.5mm !important;
+                margin-bottom: 3mm !important;
+                padding: 2mm 3mm !important;
                 width: 100% !important;
                 box-sizing: border-box !important;
-                height: 89mm !important;
-                max-height: 89mm !important;
+                height: 86mm !important;
+                max-height: 86mm !important;
                 overflow: hidden !important;
-                display: flex !important;
-                flex-direction: column !important;
             }
             
             /* Primer volante sin margen superior */
-            .volante:first-child {
-                margin-top: 0 !important;
+            .volante:first-child { margin-top: 0 !important; }
+            
+            /* Cada 3er volante fuerza salto de página después */
+            .volante:nth-child(3n) { 
+                page-break-after: always !important;
+                margin-bottom: 0 !important;
             }
             
-            /* Header compacto */
-            .volante-top { 
+            /* Header */
+            .volante-header { 
+                text-align: center !important;
+                border-bottom: 1px solid #000 !important;
+                padding-bottom: 1.5mm !important;
+                margin-bottom: 1.5mm !important;
+            }
+            .volante-header h2 { font-size: 11pt !important; margin: 0 !important; }
+            .volante-header p { font-size: 8pt !important; margin: 0.5mm 0 !important; }
+            
+            /* Info row */
+            .volante-info-row {
                 display: flex !important;
                 justify-content: space-between !important;
-                align-items: center !important;
-                border-bottom: 1px solid #000 !important; 
-                padding-bottom: 0.8mm !important;
-                margin-bottom: 0.8mm !important;
-                flex-shrink: 0 !important;
+                font-size: 9pt !important;
+                margin-bottom: 1mm !important;
             }
-            .volante-empresa-info strong { font-size: 9px !important; display: block !important; }
-            .volante-empresa-info span { font-size: 6px !important; color: #333 !important; }
-            .volante-tipo { text-align: right !important; }
-            .volante-tipo strong { font-size: 8px !important; display: block !important; }
-            .volante-tipo span { font-size: 6px !important; }
             
-            /* Nombre del empleado */
-            .volante-nombre-grande { 
-                font-size: 12px !important; 
-                font-weight: bold !important; 
-                padding: 0.8mm 0 !important;
+            /* Empleado */
+            .volante-empleado { margin-bottom: 1.5mm !important; }
+            .volante-empleado-nombre { font-size: 11pt !important; font-weight: bold !important; }
+            .volante-empleado-datos { 
+                display: flex !important;
+                justify-content: space-between !important;
+                font-size: 9pt !important;
+                padding: 1mm 0 !important;
+                border-top: 1px solid #999 !important;
                 border-bottom: 1px solid #999 !important;
-                margin-bottom: 0.8mm !important;
-                flex-shrink: 0 !important;
+            }
+            .volante-empleado-datos label { font-size: 8pt !important; color: #333 !important; }
+            
+            /* Grid */
+            .volante-grid {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 3mm !important;
+                margin-bottom: 1.5mm !important;
+            }
+            .volante-col h4 { 
+                font-size: 9pt !important; 
+                background: #e0e0e0 !important;
+                border: 1px solid #999 !important;
+                padding: 1mm !important;
+                margin: 0 0 1mm 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .volante-row { font-size: 9pt !important; padding: 0.5mm 1mm !important; }
+            .volante-row.total-row { 
+                border-top: 1px solid #000 !important;
+                font-weight: bold !important;
+                padding-top: 1mm !important;
+                margin-top: 1mm !important;
+            }
+            
+            /* Footer */
+            .volante-footer {
+                display: flex !important;
+                gap: 3mm !important;
+                padding-top: 1.5mm !important;
+                border-top: 1px solid #000 !important;
+                margin-top: auto !important;
+            }
+            .volante-firma { flex: 1 !important; text-align: center !important; }
+            .volante-firma-line { border-bottom: 1px solid #000 !important; height: 12mm !important; }
+            .volante-firma span { font-size: 7pt !important; }
+            .volante-neto {
+                flex: 1 !important;
+                background: #000 !important;
+                color: #fff !important;
+                padding: 2mm !important;
+                text-align: center !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .volante-neto label { font-size: 8pt !important; color: #fff !important; }
+            .volante-neto .monto { font-size: 13pt !important; color: #fff !important; font-weight: bold !important; }
+            .volante-totales-ded { flex: 0.8 !important; font-size: 8pt !important; }
             }
             
             /* Datos en línea horizontal */
@@ -3807,90 +3993,154 @@ const ExportacionTSSPanel = ({ empleados, nominas, config, toast }) => {
 };
 
 // =====================================================
-// COMPONENTE VOLANTE DE PAGO - DISEÑO OPTIMIZADO
+// COMPONENTE VOLANTE DE PAGO - DISEÑO COMPACTO (3 POR PÁGINA)
 // =====================================================
-const Volante = ({ emp, det, periodo, config }) => {
-    const periodoTxt = periodo.tipo === 'quincenal' 
-        ? `${periodo.quincena === 1 ? '01-15' : '16-' + new Date(periodo.año, periodo.mes, 0).getDate()} de ${MESES[periodo.mes]} ${periodo.año}`
-        : `${MESES[periodo.mes]} ${periodo.año}`;
+const Volante = ({ emp, det, periodo, config, nominaCodigo }) => {
+    const periodoDesde = periodo.tipo === 'quincenal' 
+        ? `${periodo.quincena === 1 ? '01' : '16'}/${String(periodo.mes).padStart(2,'0')}/${periodo.año}`
+        : `01/${String(periodo.mes).padStart(2,'0')}/${periodo.año}`;
+    const periodoHasta = periodo.tipo === 'quincenal'
+        ? `${periodo.quincena === 1 ? '15' : new Date(periodo.año, periodo.mes, 0).getDate()}/${String(periodo.mes).padStart(2,'0')}/${periodo.año}`
+        : `${new Date(periodo.año, periodo.mes, 0).getDate()}/${String(periodo.mes).padStart(2,'0')}/${periodo.año}`;
     
     return (
         <div className="volante">
-            {/* Header compacto: Empresa + Período en una línea */}
-            <div className="volante-top">
-                <div className="volante-empresa-info">
-                    <strong>{config.empresa.nombre}</strong>
-                    <span>{config.empresa.direccion} • RNC: {config.empresa.rnc}</span>
-                </div>
-                <div className="volante-tipo">
-                    <strong>VOLANTE DE PAGO</strong>
-                    <span>{periodoTxt}</span>
+            {/* Header: Empresa centrada */}
+            <div className="volante-header">
+                <h2>{config.empresa.nombre}</h2>
+                <p>{config.empresa.direccion}</p>
+                <p>{config.empresa.razonSocial || 'GRUPO PAIDOS, SRL'}</p>
+            </div>
+            
+            {/* Info: ID, Período, Nómina */}
+            <div className="volante-info-row">
+                <span><label>No.</label> {emp.id}</span>
+                <span><strong>NÓMINA DESDE {periodoDesde} HASTA {periodoHasta}</strong></span>
+                <span><em>Nómina #: {nominaCodigo || 'N/A'}</em></span>
+            </div>
+            
+            {/* Datos del empleado */}
+            <div className="volante-empleado">
+                <div className="volante-empleado-nombre">{emp.nombre}</div>
+                <div className="volante-empleado-datos">
+                    <span><label>{emp.tipoDocumento === 'pasaporte' ? 'PASAPORTE' : 'CÉDULA'}:</label> {emp.documento}</span>
+                    <span><label>NSS:</label> {emp.nss || 'N/A'}</span>
+                    <span><label>DEPARTAMENTO:</label> {emp.departamento}</span>
                 </div>
             </div>
             
-            {/* Nombre del empleado destacado */}
-            <div className="volante-nombre-grande">
-                {emp.nombre}
-            </div>
-            
-            {/* Datos del empleado en línea horizontal */}
-            <div className="volante-datos-linea">
-                <div><label>{emp.tipoDocumento === 'pasaporte' ? 'Pasaporte' : 'Cédula'}:</label> <span>{emp.documento}</span></div>
-                <div><label>NSS:</label> <span>{emp.nss || 'N/A'}</span></div>
-                <div><label>Departamento:</label> <span>{emp.departamento}</span></div>
-            </div>
-            
-            {/* Detalle Ingresos y Deducciones */}
-            <div className="volante-detalle">
-                <div className="volante-seccion">
-                    <h4>INGRESOS</h4>
-                    <div className="volante-linea"><span>Salario Base</span><span>RD$ {formatMoney(det.salarioBase)}</span></div>
-                    {det.horasExtra > 0 && <div className="volante-linea"><span>Horas Extras</span><span>RD$ {formatMoney(det.horasExtra)}</span></div>}
-                    {det.bonificacion > 0 && <div className="volante-linea"><span>Bonificación</span><span>RD$ {formatMoney(det.bonificacion)}</span></div>}
-                    {det.comisiones > 0 && <div className="volante-linea"><span>Comisiones</span><span>RD$ {formatMoney(det.comisiones)}</span></div>}
-                    {det.incentivos > 0 && <div className="volante-linea"><span>Incentivos</span><span>RD$ {formatMoney(det.incentivos)}</span></div>}
-                    {det.viaticos > 0 && <div className="volante-linea"><span>Viáticos</span><span>RD$ {formatMoney(det.viaticos)}</span></div>}
-                    {det.vacaciones > 0 && <div className="volante-linea"><span>Vacaciones</span><span>RD$ {formatMoney(det.vacaciones)}</span></div>}
-                    {det.regalia > 0 && <div className="volante-linea"><span>Regalía Pascual</span><span>RD$ {formatMoney(det.regalia)}</span></div>}
-                    {det.otrosIng > 0 && <div className="volante-linea"><span>Otros Ingresos</span><span>RD$ {formatMoney(det.otrosIng)}</span></div>}
-                    <div className="volante-linea total"><span>TOTAL INGRESOS</span><span>RD$ {formatMoney(det.totalIng)}</span></div>
-                </div>
-                
-                <div className="volante-seccion">
-                    <h4>DEDUCCIONES</h4>
-                    <div className="volante-linea"><span>AFP ({config.tss.afpEmpleado}%)</span><span>RD$ {formatMoney(det.afpEmp)}</span></div>
-                    <div className="volante-linea"><span>SFS ({config.tss.sfsEmpleado}%)</span><span>RD$ {formatMoney(det.sfsEmp)}</span></div>
-                    {det.isr > 0 && <div className="volante-linea"><span>ISR</span><span>RD$ {formatMoney(det.isr)}</span></div>}
-                    {det.pdss > 0 && <div className="volante-linea"><span>PDSS Adicional</span><span>RD$ {formatMoney(det.pdss)}</span></div>}
-                    {det.descAusencias > 0 && (
-                        <div className="volante-linea volante-ausencias">
-                            <span>Ausencias ({det.diasAus} día{det.diasAus > 1 ? 's' : ''}{det.fechasAus?.length > 0 ? `: ${det.fechasAus.map(f => parseInt(f.split('-')[2])).join(', ')}` : ''})</span>
-                            <span>RD$ {formatMoney(det.descAusencias)}</span>
+            {/* Grid: Ingresos | Deducciones */}
+            <div className="volante-grid">
+                {/* Columna Ingresos */}
+                <div className="volante-col">
+                    <h4>&lt;&gt; Ingresos &lt;&gt;</h4>
+                    <div className="volante-row">
+                        <span>Normal</span>
+                        <span className="monto">{formatMoney(det.salarioBase)}</span>
+                    </div>
+                    {det.vacaciones > 0 && (
+                        <div className="volante-row">
+                            <span>Vacaciones</span>
+                            <span className="monto">{formatMoney(det.vacaciones)}</span>
                         </div>
                     )}
-                    {det.descTardanzas > 0 && <div className="volante-linea"><span>Desc. Tardanzas</span><span>RD$ {formatMoney(det.descTardanzas)}</span></div>}
-                    {det.cuotaPrestamo > 0 && <div className="volante-linea"><span>Cuota Préstamo</span><span>RD$ {formatMoney(det.cuotaPrestamo)}</span></div>}
-                    {det.cooperativa > 0 && <div className="volante-linea"><span>Cooperativa</span><span>RD$ {formatMoney(det.cooperativa)}</span></div>}
-                    {det.seguroPrivado > 0 && <div className="volante-linea"><span>Seguro Médico</span><span>RD$ {formatMoney(det.seguroPrivado)}</span></div>}
-                    {det.embargo > 0 && <div className="volante-linea"><span>Embargo/Pensión</span><span>RD$ {formatMoney(det.embargo)}</span></div>}
-                    {det.otrasDed > 0 && <div className="volante-linea"><span>Otras Deducciones</span><span>RD$ {formatMoney(det.otrasDed)}</span></div>}
-                    <div className="volante-linea total"><span>TOTAL DEDUCCIONES</span><span>RD$ {formatMoney(det.totalDed)}</span></div>
+                    {det.horasExtra > 0 && (
+                        <div className="volante-row">
+                            <span>Extra</span>
+                            <span className="monto">{formatMoney(det.horasExtra)}</span>
+                        </div>
+                    )}
+                    {(det.bonificacion > 0 || det.comisiones > 0 || det.incentivos > 0 || det.viaticos > 0 || det.otrosIng > 0) && (
+                        <div className="volante-row">
+                            <span>Otros</span>
+                            <span className="monto">{formatMoney((det.bonificacion || 0) + (det.comisiones || 0) + (det.incentivos || 0) + (det.viaticos || 0) + (det.otrosIng || 0))}</span>
+                        </div>
+                    )}
+                    {det.regalia > 0 && (
+                        <div className="volante-row">
+                            <span>Regalía</span>
+                            <span className="monto">{formatMoney(det.regalia)}</span>
+                        </div>
+                    )}
+                    <div className="volante-row total-row">
+                        <span></span>
+                        <span className="monto">{formatMoney(det.totalIng)}</span>
+                    </div>
+                </div>
+                
+                {/* Columna Deducciones */}
+                <div className="volante-col">
+                    <h4>&lt;&gt; Deducciones &lt;&gt;</h4>
+                    <div className="volante-row">
+                        <span>AFP</span>
+                        <span className="monto">{formatMoney(det.afpEmp)}</span>
+                    </div>
+                    {det.isr > 0 && (
+                        <div className="volante-row">
+                            <span>Imp./Renta</span>
+                            <span className="monto">{formatMoney(det.isr)}</span>
+                        </div>
+                    )}
+                    <div className="volante-row">
+                        <span>Seg. F. Salud</span>
+                        <span className="monto">{formatMoney(det.sfsEmp)}</span>
+                    </div>
+                    {det.seguroPrivado > 0 && (
+                        <div className="volante-row">
+                            <span>Seg. Medico</span>
+                            <span className="monto">{formatMoney(det.seguroPrivado)}</span>
+                        </div>
+                    )}
+                    {det.pdss > 0 && (
+                        <div className="volante-row">
+                            <span>PDSS-PER CAPITA</span>
+                            <span className="monto">{formatMoney(det.pdss)}</span>
+                        </div>
+                    )}
+                    {det.cuotaPrestamo > 0 && (
+                        <div className="volante-row">
+                            <span>Préstamo</span>
+                            <span className="monto">{formatMoney(det.cuotaPrestamo)}</span>
+                        </div>
+                    )}
+                    {det.cooperativa > 0 && (
+                        <div className="volante-row">
+                            <span>Cooperativa</span>
+                            <span className="monto">{formatMoney(det.cooperativa)}</span>
+                        </div>
+                    )}
+                    {det.descAusencias > 0 && (
+                        <div className="volante-row">
+                            <span>Ausencias</span>
+                            <span className="monto">{formatMoney(det.descAusencias)}</span>
+                        </div>
+                    )}
+                    {det.embargo > 0 && (
+                        <div className="volante-row">
+                            <span>Embargo</span>
+                            <span className="monto">{formatMoney(det.embargo)}</span>
+                        </div>
+                    )}
+                    <div className="volante-row total-row">
+                        <span></span>
+                        <span className="monto">{formatMoney(det.totalDed)}</span>
+                    </div>
                 </div>
             </div>
             
-            {/* Pie: NETO + Firmas en una fila */}
-            <div className="volante-pie">
-                <div className="volante-firma-box">
-                    <div className="volante-firma-linea"></div>
-                    <span>Firma del Empleado</span>
+            {/* Pie: Firma + Neto */}
+            <div className="volante-footer">
+                <div className="volante-firma">
+                    <div className="volante-firma-line"></div>
+                    <span>FIRMA / CÉDULA</span>
                 </div>
-                <div className="volante-neto-box">
-                    <label>NETO A RECIBIR</label>
-                    <span>RD$ {formatMoney(det.neto)}</span>
+                <div className="volante-neto">
+                    <label>Total Neto</label>
+                    <div className="monto">{formatMoney(det.neto)}</div>
                 </div>
-                <div className="volante-firma-box">
-                    <div className="volante-firma-linea"></div>
-                    <span>Fecha de Recibido</span>
+                <div className="volante-totales-ded">
+                    <div><span>TOTAL ING:</span><span className="monto">{formatMoney(det.totalIng)}</span></div>
+                    <div><span>TOTAL DED:</span><span className="monto">{formatMoney(det.totalDed)}</span></div>
                 </div>
             </div>
         </div>
@@ -5797,7 +6047,7 @@ const App = () => {
             // Calcular regalía si es diciembre (solo en 2da quincena o mensual)
             const regalia = esRegalia ? calcularRegalia(emp.salarioBase, 12) : 0;
 
-            edits[emp.id] = { diasAus: 0, fechasAus: [], minTard: 0, horas35: 0, horas100: 0, bonificacion: 0, comisiones: 0, incentivos: 0, viaticos: 0, otrosIng: 0, otrasDed: 0 };
+            edits[emp.id] = { diasAus: 0, fechasAus: [], minTard: 0, horas35: 0, horas100: 0, bonificacion: 0, comisiones: 0, incentivos: 0, viaticos: 0, vacaciones: 0, otrosIng: 0, otrasDed: 0 };
 
             const totalIng = salBase + regalia;
             const totalDed = afpEmp + sfsEmp + isr + pdss + cuotaPrestamo + cooperativa + seguroPrivado + embargo;
@@ -5868,12 +6118,12 @@ const App = () => {
         const infotep = round2(tssMensual.infotep / divisor);
         const riesgo = round2(tssMensual.riesgo / divisor);
 
-        const totalIng = salBase + horasExtra + bonificacion + comisiones + incentivos + viaticos + regalia + otrosIng;
+        const totalIng = salBase + horasExtra + bonificacion + comisiones + incentivos + viaticos + (ed.vacaciones || 0) + regalia + otrosIng;
         const totalDed = afpEmp + sfsEmp + isr + pdss + descAusencias + descTardanzas + cuotaPrestamo + cooperativa + seguroPrivado + embargo + otrasDed;
 
         return {
             empId: emp.id, nombre: emp.nombre, depto: emp.departamento, cargo: emp.cargo,
-            salarioBase: salBase, horasExtra, horas35: ed.horas35 || 0, horas100: ed.horas100 || 0, bonificacion, comisiones, incentivos, viaticos, vacaciones: 0, regalia, otrosIng, totalIng,
+            salarioBase: salBase, horasExtra, horas35: ed.horas35 || 0, horas100: ed.horas100 || 0, bonificacion, comisiones, incentivos, viaticos, vacaciones: ed.vacaciones || 0, regalia, otrosIng, totalIng,
             diasAus: ed.diasAus || 0, fechasAus: ed.fechasAus || [], descAusencias, minTard: ed.minTard || 0, descTardanzas,
             afpEmp, sfsEmp, isr, pdss, cuotaPrestamo, cooperativa, seguroPrivado, embargo, otrasDed, totalDed,
             neto: round2(totalIng - totalDed),
@@ -6139,6 +6389,7 @@ const App = () => {
                     <th>Comisiones</th>
                     <th>Incentivos</th>
                     <th>Viáticos</th>
+                    <th>Vacaciones</th>
                     <th>Otros Ing.</th>
                     <th>Total Ingresos</th>
                     <th>AFP (2.87%)</th>
@@ -6163,6 +6414,7 @@ const App = () => {
                     <td class="money">${(d.comisiones || 0).toFixed(2)}</td>
                     <td class="money">${(d.incentivos || 0).toFixed(2)}</td>
                     <td class="money">${(d.viaticos || 0).toFixed(2)}</td>
+                    <td class="money">${(d.vacaciones || 0).toFixed(2)}</td>
                     <td class="money">${d.otrosIng.toFixed(2)}</td>
                     <td class="money">${d.totalIng.toFixed(2)}</td>
                     <td class="money">${d.afpEmp.toFixed(2)}</td>
@@ -6696,9 +6948,61 @@ const App = () => {
     );
 
     const renderNomina = () => {
-        if (!currentNomina) return (
-            <div className="card"><div className="card-body"><div className="empty"><Icons.FileText /><h3>No hay nómina generada</h3><p>Genere una desde el Dashboard</p><button className="btn btn-primary" style={{marginTop:'12px'}} onClick={() => setView('dashboard')}>Ir al Dashboard</button></div></div></div>
-        );
+        // Si no hay currentNomina pero hay nóminas guardadas, mostrar selector
+        if (!currentNomina) {
+            const nominasDisponibles = nominas.filter(n => n.estado === 'procesada' || n.estado === 'guardada' || n.estado === 'borrador');
+            
+            if (nominasDisponibles.length > 0) {
+                return (
+                    <div className="card">
+                        <div className="card-body">
+                            <div style={{textAlign:'center', padding:'40px 20px'}}>
+                                <Icons.FileText style={{width:'64px', height:'64px', opacity:0.3, marginBottom:'16px'}} />
+                                <h3 style={{marginBottom:'8px'}}>Seleccione una Nómina</h3>
+                                <p style={{color:'var(--text-muted)', marginBottom:'20px'}}>
+                                    Hay {nominasDisponibles.length} nómina(s) disponible(s). Seleccione una para ver o editar.
+                                </p>
+                                
+                                <div style={{maxWidth:'400px', margin:'0 auto 20px'}}>
+                                    <select 
+                                        className="form-control"
+                                        onChange={e => {
+                                            const nom = nominas.find(n => n.id === e.target.value || n.id === parseInt(e.target.value));
+                                            if (nom) setCurrentNomina(nom);
+                                        }}
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>-- Seleccione una nómina --</option>
+                                        {nominasDisponibles.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).map(n => (
+                                            <option key={n.id} value={n.id}>
+                                                {MESES[n.periodo.mes]} {n.periodo.año} 
+                                                {n.periodo.tipo === 'quincenal' ? ` Q${n.periodo.quincena}` : ''} 
+                                                {' - '}{n.codigo || 'Sin código'} 
+                                                {' ('}{n.estado}{')'}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                
+                                <div style={{borderTop:'1px solid var(--border)', paddingTop:'20px', marginTop:'20px'}}>
+                                    <p style={{fontSize:'12px', color:'var(--text-muted)', marginBottom:'12px'}}>
+                                        ¿Desea generar una nueva nómina?
+                                    </p>
+                                    <button className="btn btn-primary" onClick={() => setView('dashboard')}>
+                                        <Icons.Plus /> Ir al Dashboard
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
+            // Si realmente no hay nóminas
+            return (
+                <div className="card"><div className="card-body"><div className="empty"><Icons.FileText /><h3>No hay nómina generada</h3><p>Genere una desde el Dashboard</p><button className="btn btn-primary" style={{marginTop:'12px'}} onClick={() => setView('dashboard')}>Ir al Dashboard</button></div></div></div>
+            );
+        }
 
         const periodoTxt = currentNomina.periodo.tipo === 'quincenal' ? `Q${currentNomina.periodo.quincena} ${MESES[currentNomina.periodo.mes]} ${currentNomina.periodo.año}` : `${MESES[currentNomina.periodo.mes]} ${currentNomina.periodo.año}`;
         const esBorrador = currentNomina.estado === 'borrador';
@@ -6748,7 +7052,7 @@ const App = () => {
                                 <tr>
                                     <th className="sticky-col">Empleado</th>
                                     <th>Salario</th>
-                                    {esBorrador && <><th>Aus.</th><th>Tard.</th><th>H.35%</th><th>H.100%</th><th>Bonif.</th><th>Comis.</th><th>Incent.</th><th>Viát.</th><th>+Otros</th><th>-Otros</th></>}
+                                    {esBorrador && <><th>Aus.</th><th>Tard.</th><th>H.35%</th><th>H.100%</th><th>Bonif.</th><th>Comis.</th><th>Incent.</th><th>Viát.</th><th>Vac.</th><th>+Otros</th><th>-Otros</th></>}
                                     <th>AFP</th>
                                     <th>SFS</th>
                                     <th>ISR</th>
@@ -6790,6 +7094,7 @@ const App = () => {
                                                     <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.comisiones || ''} onChange={e => updateEdit(d.empId, 'comisiones', e.target.value)} placeholder="0" /></td>
                                                     <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.incentivos || ''} onChange={e => updateEdit(d.empId, 'incentivos', e.target.value)} placeholder="0" /></td>
                                                     <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.viaticos || ''} onChange={e => updateEdit(d.empId, 'viaticos', e.target.value)} placeholder="0" /></td>
+                                                    <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.vacaciones || ''} onChange={e => updateEdit(d.empId, 'vacaciones', e.target.value)} placeholder="0" /></td>
                                                     <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.otrosIng || ''} onChange={e => updateEdit(d.empId, 'otrosIng', e.target.value)} placeholder="0" /></td>
                                                     <td><input className="inline-input" type="number" min="0" value={nominaEdits[d.empId]?.otrasDed || ''} onChange={e => updateEdit(d.empId, 'otrasDed', e.target.value)} placeholder="0" /></td>
                                                 </>}
@@ -6806,7 +7111,7 @@ const App = () => {
                                         <tr className="dept-row">
                                             <td className="sticky-col"><strong>TOTAL {depto}</strong></td>
                                             <td className="money">{formatMoney(dets.reduce((s,d)=>s+d.salarioBase,0))}</td>
-                                            {esBorrador && <td colSpan="5"></td>}
+                                            {esBorrador && <td colSpan="11"></td>}
                                             <td className="money">{formatMoney(dets.reduce((s,d)=>s+d.afpEmp,0))}</td>
                                             <td className="money">{formatMoney(dets.reduce((s,d)=>s+d.sfsEmp,0))}</td>
                                             <td className="money">{formatMoney(dets.reduce((s,d)=>s+d.isr,0))}</td>
@@ -7388,7 +7693,7 @@ const App = () => {
                         </form>
 
                         <div className="footer-text-edu">
-                            Sistema Nómina Tehui v3.91 © 2026
+                            Sistema Nómina Tehui v3.93 © 2026
                         </div>
                     </div>
 
@@ -8491,7 +8796,7 @@ const App = () => {
             {/* Modal Volantes */}
             <Modal open={modals.volantes} onClose={() => { closeModal('volantes'); setSelectedVolante(null); }} title="Volantes de Pago" size="xl" footer={<><button className="btn btn-secondary" onClick={() => closeModal('volantes')}>Cerrar</button><button className="btn btn-primary" onClick={imprimirVolantes}><Icons.Printer /> Imprimir</button></>}>
                 <div className="print-area">
-                    {volantesData.map((v, i) => <Volante key={i} emp={v.emp} det={v.det} periodo={currentNomina?.periodo} config={config} />)}
+                    {volantesData.map((v, i) => <Volante key={i} emp={v.emp} det={v.det} periodo={currentNomina?.periodo} config={config} nominaCodigo={currentNomina?.codigo} />)}
                 </div>
             </Modal>
 
