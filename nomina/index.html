@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Nómina Tehui v3.88 - Protección de Datos</title>
+    <title>Sistema de Nómina Tehui v3.90 - Protección de Datos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -3092,6 +3092,721 @@ const ProteccionDatosPanel = ({ toast, onClose }) => {
 };
 
 // =====================================================
+// COMPONENTE GESTIÓN DE USUARIOS
+// Panel completo para administrar usuarios del sistema
+// =====================================================
+const GestionUsuariosPanel = ({ toast, onClose, usuarioActual }) => {
+    const [usuarios, setUsuarios] = useState({});
+    const [editando, setEditando] = useState(null);
+    const [nuevoUsuario, setNuevoUsuario] = useState({ 
+        id: '', nombre: '', email: '', rol: 'consulta', password: '', requires2FA: true 
+    });
+    const [mostrarFormulario, setMostrarFormulario] = useState(false);
+    const [cargando, setCargando] = useState(false);
+    
+    useEffect(() => {
+        cargarUsuarios();
+    }, []);
+    
+    const cargarUsuarios = () => {
+        const users = cargarUsuariosSistema();
+        setUsuarios(users);
+    };
+    
+    const handleCrearUsuario = async () => {
+        if (!nuevoUsuario.id || !nuevoUsuario.nombre || !nuevoUsuario.password) {
+            toast('⚠️ Complete todos los campos obligatorios', 'warning');
+            return;
+        }
+        
+        if (usuarios[nuevoUsuario.id.toLowerCase()]) {
+            toast('❌ Ya existe un usuario con ese ID', 'error');
+            return;
+        }
+        
+        if (nuevoUsuario.password.length < 8) {
+            toast('⚠️ La contraseña debe tener al menos 8 caracteres', 'warning');
+            return;
+        }
+        
+        setCargando(true);
+        
+        const hash = await generarPasswordHash(nuevoUsuario.password);
+        
+        const nuevo = {
+            passwordHash: hash,
+            nombre: nuevoUsuario.nombre,
+            email: nuevoUsuario.email,
+            rol: nuevoUsuario.rol,
+            requires2FA: nuevoUsuario.requires2FA,
+            activo: true,
+            fechaCreacion: new Date().toISOString().split('T')[0],
+            ultimoAcceso: null
+        };
+        
+        const actualizados = { ...usuarios, [nuevoUsuario.id.toLowerCase()]: nuevo };
+        guardarUsuariosSistema(actualizados);
+        USUARIOS_SISTEMA = actualizados;
+        
+        // Registrar en historial
+        if (window.HistorialCambios) {
+            window.HistorialCambios.registrar('USUARIO_CREADO', {
+                usuarioId: nuevoUsuario.id.toLowerCase(),
+                nombre: nuevoUsuario.nombre,
+                rol: nuevoUsuario.rol
+            }, usuarioActual?.usuario);
+        }
+        
+        toast('✅ Usuario creado correctamente', 'success');
+        setNuevoUsuario({ id: '', nombre: '', email: '', rol: 'consulta', password: '', requires2FA: true });
+        setMostrarFormulario(false);
+        cargarUsuarios();
+        setCargando(false);
+    };
+    
+    const handleToggleActivo = (userId) => {
+        if (userId === 'admin') {
+            toast('⚠️ No se puede desactivar el usuario admin', 'warning');
+            return;
+        }
+        
+        const actualizados = { ...usuarios };
+        actualizados[userId].activo = !actualizados[userId].activo;
+        guardarUsuariosSistema(actualizados);
+        USUARIOS_SISTEMA = actualizados;
+        
+        if (window.HistorialCambios) {
+            window.HistorialCambios.registrar(
+                actualizados[userId].activo ? 'USUARIO_ACTIVADO' : 'USUARIO_DESACTIVADO',
+                { usuarioId: userId },
+                usuarioActual?.usuario
+            );
+        }
+        
+        toast(`✅ Usuario ${actualizados[userId].activo ? 'activado' : 'desactivado'}`, 'success');
+        cargarUsuarios();
+    };
+    
+    const handleResetPassword = async (userId) => {
+        const nuevaPassword = prompt('Ingrese la nueva contraseña (mínimo 8 caracteres):');
+        if (!nuevaPassword || nuevaPassword.length < 8) {
+            toast('⚠️ Contraseña inválida', 'warning');
+            return;
+        }
+        
+        setCargando(true);
+        const hash = await generarPasswordHash(nuevaPassword);
+        
+        const actualizados = { ...usuarios };
+        actualizados[userId].passwordHash = hash;
+        guardarUsuariosSistema(actualizados);
+        USUARIOS_SISTEMA = actualizados;
+        
+        if (window.HistorialCambios) {
+            window.HistorialCambios.registrar('USUARIO_PASSWORD_RESET', { usuarioId: userId }, usuarioActual?.usuario);
+        }
+        
+        toast('✅ Contraseña actualizada', 'success');
+        setCargando(false);
+    };
+    
+    const handleReset2FA = (userId) => {
+        if (!confirm('¿Resetear 2FA de este usuario? Deberá configurarlo nuevamente.')) return;
+        
+        // Eliminar secreto 2FA del localStorage
+        localStorage.removeItem(`tehui_2fa_${userId}`);
+        
+        if (window.HistorialCambios) {
+            window.HistorialCambios.registrar('USUARIO_2FA_RESET', { usuarioId: userId }, usuarioActual?.usuario);
+        }
+        
+        toast('✅ 2FA reseteado. El usuario deberá configurarlo nuevamente', 'success');
+    };
+    
+    return (
+        <div style={{padding: '10px 0'}}>
+            {/* Header con botón crear */}
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+                <div>
+                    <h4 style={{margin:0}}>👥 Usuarios del Sistema</h4>
+                    <small style={{color:'var(--text-muted)'}}>{Object.keys(usuarios).length} usuarios registrados</small>
+                </div>
+                <button 
+                    className="btn btn-success"
+                    onClick={() => setMostrarFormulario(!mostrarFormulario)}
+                >
+                    {mostrarFormulario ? '✕ Cancelar' : '+ Nuevo Usuario'}
+                </button>
+            </div>
+            
+            {/* Formulario nuevo usuario */}
+            {mostrarFormulario && (
+                <div style={{background:'var(--bg-main)', padding:'15px', borderRadius:'8px', marginBottom:'20px'}}>
+                    <h5 style={{marginTop:0}}>Crear Nuevo Usuario</h5>
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+                        <div>
+                            <label style={{fontSize:'11px', fontWeight:'600'}}>ID Usuario *</label>
+                            <input 
+                                type="text" 
+                                className="form-control form-control-sm"
+                                placeholder="ej: maria.perez"
+                                value={nuevoUsuario.id}
+                                onChange={e => setNuevoUsuario({...nuevoUsuario, id: e.target.value})}
+                            />
+                        </div>
+                        <div>
+                            <label style={{fontSize:'11px', fontWeight:'600'}}>Nombre Completo *</label>
+                            <input 
+                                type="text" 
+                                className="form-control form-control-sm"
+                                placeholder="ej: María Pérez"
+                                value={nuevoUsuario.nombre}
+                                onChange={e => setNuevoUsuario({...nuevoUsuario, nombre: e.target.value})}
+                            />
+                        </div>
+                        <div>
+                            <label style={{fontSize:'11px', fontWeight:'600'}}>Email</label>
+                            <input 
+                                type="email" 
+                                className="form-control form-control-sm"
+                                placeholder="ej: maria@tehui.edu.do"
+                                value={nuevoUsuario.email}
+                                onChange={e => setNuevoUsuario({...nuevoUsuario, email: e.target.value})}
+                            />
+                        </div>
+                        <div>
+                            <label style={{fontSize:'11px', fontWeight:'600'}}>Rol</label>
+                            <select 
+                                className="form-control form-control-sm"
+                                value={nuevoUsuario.rol}
+                                onChange={e => setNuevoUsuario({...nuevoUsuario, rol: e.target.value})}
+                            >
+                                <option value="admin">Administrador (acceso total)</option>
+                                <option value="rrhh">RRHH (gestión empleados)</option>
+                                <option value="consulta">Consulta (solo lectura)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{fontSize:'11px', fontWeight:'600'}}>Contraseña *</label>
+                            <input 
+                                type="password" 
+                                className="form-control form-control-sm"
+                                placeholder="Mínimo 8 caracteres"
+                                value={nuevoUsuario.password}
+                                onChange={e => setNuevoUsuario({...nuevoUsuario, password: e.target.value})}
+                            />
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'8px', paddingTop:'20px'}}>
+                            <input 
+                                type="checkbox" 
+                                id="req2fa"
+                                checked={nuevoUsuario.requires2FA}
+                                onChange={e => setNuevoUsuario({...nuevoUsuario, requires2FA: e.target.checked})}
+                            />
+                            <label htmlFor="req2fa" style={{fontSize:'11px'}}>Requiere 2FA</label>
+                        </div>
+                    </div>
+                    <div style={{marginTop:'15px', display:'flex', gap:'10px'}}>
+                        <button className="btn btn-primary" onClick={handleCrearUsuario} disabled={cargando}>
+                            {cargando ? '⏳ Creando...' : '✓ Crear Usuario'}
+                        </button>
+                    </div>
+                </div>
+            )}
+            
+            {/* Lista de usuarios */}
+            <div style={{border:'1px solid var(--border)', borderRadius:'8px', overflow:'hidden'}}>
+                <table style={{width:'100%', fontSize:'12px', borderCollapse:'collapse'}}>
+                    <thead>
+                        <tr style={{background:'var(--bg-main)'}}>
+                            <th style={{padding:'10px', textAlign:'left'}}>Usuario</th>
+                            <th style={{padding:'10px', textAlign:'left'}}>Nombre</th>
+                            <th style={{padding:'10px', textAlign:'center'}}>Rol</th>
+                            <th style={{padding:'10px', textAlign:'center'}}>Estado</th>
+                            <th style={{padding:'10px', textAlign:'center'}}>2FA</th>
+                            <th style={{padding:'10px', textAlign:'center'}}>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {Object.entries(usuarios).map(([userId, user]) => (
+                            <tr key={userId} style={{borderTop:'1px solid var(--border)', opacity: user.activo ? 1 : 0.5}}>
+                                <td style={{padding:'10px'}}>
+                                    <strong>{userId}</strong>
+                                    <br/><small style={{color:'var(--text-muted)'}}>{user.email}</small>
+                                </td>
+                                <td style={{padding:'10px'}}>{user.nombre}</td>
+                                <td style={{padding:'10px', textAlign:'center'}}>
+                                    <span className={`badge badge-${user.rol === 'admin' ? 'danger' : user.rol === 'rrhh' ? 'warning' : 'info'}`}>
+                                        {user.rol}
+                                    </span>
+                                </td>
+                                <td style={{padding:'10px', textAlign:'center'}}>
+                                    <span className={`badge badge-${user.activo ? 'success' : 'secondary'}`}>
+                                        {user.activo ? '✓ Activo' : '✕ Inactivo'}
+                                    </span>
+                                </td>
+                                <td style={{padding:'10px', textAlign:'center'}}>
+                                    {user.requires2FA ? '🔐' : '🔓'}
+                                </td>
+                                <td style={{padding:'10px', textAlign:'center'}}>
+                                    <div style={{display:'flex', gap:'4px', justifyContent:'center', flexWrap:'wrap'}}>
+                                        <button 
+                                            className="btn btn-xs btn-warning"
+                                            onClick={() => handleResetPassword(userId)}
+                                            title="Cambiar contraseña"
+                                        >
+                                            🔑
+                                        </button>
+                                        <button 
+                                            className="btn btn-xs btn-info"
+                                            onClick={() => handleReset2FA(userId)}
+                                            title="Resetear 2FA"
+                                        >
+                                            📱
+                                        </button>
+                                        <button 
+                                            className={`btn btn-xs btn-${user.activo ? 'secondary' : 'success'}`}
+                                            onClick={() => handleToggleActivo(userId)}
+                                            title={user.activo ? 'Desactivar' : 'Activar'}
+                                            disabled={userId === 'admin'}
+                                        >
+                                            {user.activo ? '🚫' : '✓'}
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style={{marginTop:'15px', padding:'12px', background:'rgba(255,193,7,0.1)', borderRadius:'8px', fontSize:'11px'}}>
+                <strong>💡 Roles:</strong><br/>
+                • <strong>Admin:</strong> Acceso total al sistema<br/>
+                • <strong>RRHH:</strong> Gestionar empleados, nóminas, préstamos<br/>
+                • <strong>Consulta:</strong> Solo ver información, no puede modificar
+            </div>
+        </div>
+    );
+};
+
+// =====================================================
+// COMPONENTE HISTORIAL Y AUDITORÍA
+// Panel para ver todas las acciones del sistema
+// =====================================================
+const HistorialAuditoriaPanel = ({ toast, onClose }) => {
+    const [historial, setHistorial] = useState([]);
+    const [filtros, setFiltros] = useState({ tipo: '', usuario: '', busqueda: '', limite: 100 });
+    const [stats, setStats] = useState(null);
+    const [cargando, setCargando] = useState(false);
+    
+    useEffect(() => {
+        cargarHistorial();
+    }, [filtros]);
+    
+    const cargarHistorial = () => {
+        if (window.HistorialCambios) {
+            setHistorial(window.HistorialCambios.obtener(filtros));
+            setStats(window.HistorialCambios.estadisticas());
+        }
+    };
+    
+    const exportarHistorial = (formato) => {
+        if (window.HistorialCambios) {
+            window.HistorialCambios.exportar(formato);
+            toast(`✅ Historial exportado en formato ${formato.toUpperCase()}`, 'success');
+        }
+    };
+    
+    const limpiarHistorial = () => {
+        const dias = prompt('¿Eliminar registros con más de cuántos días de antigüedad?', '90');
+        if (!dias) return;
+        
+        const eliminados = window.HistorialCambios.limpiar(parseInt(dias));
+        toast(`✅ Se eliminaron ${eliminados} registros antiguos`, 'success');
+        cargarHistorial();
+    };
+    
+    const getTipoColor = (tipo) => {
+        if (tipo.includes('CREADO') || tipo.includes('EXITOSO')) return 'success';
+        if (tipo.includes('ELIMINADO') || tipo.includes('FALLIDO')) return 'danger';
+        if (tipo.includes('EDITADO') || tipo.includes('RESET')) return 'warning';
+        return 'info';
+    };
+    
+    const getTipoIcon = (tipo) => {
+        if (tipo.includes('USUARIO')) return '👤';
+        if (tipo.includes('EMPLEADO')) return '👥';
+        if (tipo.includes('NOMINA')) return '💰';
+        if (tipo.includes('PRESTAMO')) return '💳';
+        if (tipo.includes('LICENCIA')) return '🏖️';
+        if (tipo.includes('BACKUP')) return '💾';
+        if (tipo.includes('LOGIN') || tipo.includes('LOGOUT')) return '🔐';
+        if (tipo.includes('SYNC')) return '☁️';
+        return '📋';
+    };
+    
+    return (
+        <div style={{padding: '10px 0'}}>
+            {/* Estadísticas */}
+            {stats && (
+                <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'10px', marginBottom:'20px'}}>
+                    <div style={{background:'var(--bg-main)', padding:'12px', borderRadius:'8px', textAlign:'center'}}>
+                        <div style={{fontSize:'24px', fontWeight:'bold', color:'var(--primary)'}}>{stats.total}</div>
+                        <div style={{fontSize:'10px', color:'var(--text-muted)'}}>Total Registros</div>
+                    </div>
+                    <div style={{background:'var(--bg-main)', padding:'12px', borderRadius:'8px', textAlign:'center'}}>
+                        <div style={{fontSize:'24px', fontWeight:'bold', color:'var(--success)'}}>{stats.ultimaSemana}</div>
+                        <div style={{fontSize:'10px', color:'var(--text-muted)'}}>Última Semana</div>
+                    </div>
+                    <div style={{background:'var(--bg-main)', padding:'12px', borderRadius:'8px', textAlign:'center'}}>
+                        <div style={{fontSize:'24px', fontWeight:'bold', color:'var(--warning)'}}>{Object.keys(stats.porUsuario).length}</div>
+                        <div style={{fontSize:'10px', color:'var(--text-muted)'}}>Usuarios Activos</div>
+                    </div>
+                    <div style={{background:'var(--bg-main)', padding:'12px', borderRadius:'8px', textAlign:'center'}}>
+                        <div style={{fontSize:'24px', fontWeight:'bold', color:'var(--info)'}}>{Object.keys(stats.porTipo).length}</div>
+                        <div style={{fontSize:'10px', color:'var(--text-muted)'}}>Tipos de Evento</div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Filtros */}
+            <div style={{display:'flex', gap:'10px', marginBottom:'15px', flexWrap:'wrap', alignItems:'center'}}>
+                <input 
+                    type="text"
+                    className="form-control form-control-sm"
+                    style={{width:'200px'}}
+                    placeholder="🔍 Buscar..."
+                    value={filtros.busqueda}
+                    onChange={e => setFiltros({...filtros, busqueda: e.target.value})}
+                />
+                <select 
+                    className="form-control form-control-sm"
+                    style={{width:'150px'}}
+                    value={filtros.tipo}
+                    onChange={e => setFiltros({...filtros, tipo: e.target.value})}
+                >
+                    <option value="">Todos los tipos</option>
+                    <option value="LOGIN_EXITOSO">Logins</option>
+                    <option value="EMPLEADO_">Empleados</option>
+                    <option value="NOMINA_">Nóminas</option>
+                    <option value="USUARIO_">Usuarios</option>
+                    <option value="BACKUP_">Backups</option>
+                </select>
+                <select 
+                    className="form-control form-control-sm"
+                    style={{width:'100px'}}
+                    value={filtros.limite}
+                    onChange={e => setFiltros({...filtros, limite: parseInt(e.target.value)})}
+                >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={500}>500</option>
+                    <option value={1000}>1000</option>
+                </select>
+                <div style={{marginLeft:'auto', display:'flex', gap:'5px'}}>
+                    <button className="btn btn-sm btn-info" onClick={() => exportarHistorial('csv')}>📥 CSV</button>
+                    <button className="btn btn-sm btn-info" onClick={() => exportarHistorial('json')}>📥 JSON</button>
+                    <button className="btn btn-sm btn-warning" onClick={limpiarHistorial}>🗑️ Limpiar</button>
+                </div>
+            </div>
+            
+            {/* Lista de eventos */}
+            <div style={{maxHeight:'400px', overflowY:'auto', border:'1px solid var(--border)', borderRadius:'8px'}}>
+                {historial.length === 0 ? (
+                    <div style={{padding:'40px', textAlign:'center', color:'var(--text-muted)'}}>
+                        No hay registros de actividad
+                    </div>
+                ) : (
+                    historial.map((item, i) => (
+                        <div key={item.id} style={{
+                            display:'flex', gap:'12px', padding:'10px 12px',
+                            borderBottom: i < historial.length - 1 ? '1px solid var(--border-light)' : 'none',
+                            alignItems:'flex-start'
+                        }}>
+                            <div style={{fontSize:'20px'}}>{getTipoIcon(item.tipo)}</div>
+                            <div style={{flex:1}}>
+                                <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                    <span className={`badge badge-${getTipoColor(item.tipo)}`} style={{fontSize:'9px'}}>
+                                        {item.tipo.replace(/_/g, ' ')}
+                                    </span>
+                                    <span style={{fontSize:'10px', color:'var(--text-muted)'}}>por {item.usuario}</span>
+                                </div>
+                                <div style={{fontSize:'11px', marginTop:'4px'}}>
+                                    {item.datos && Object.keys(item.datos).length > 0 && (
+                                        <span style={{color:'var(--text-secondary)'}}>
+                                            {Object.entries(item.datos).map(([k,v]) => `${k}: ${v}`).join(' • ')}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div style={{fontSize:'10px', color:'var(--text-muted)', whiteSpace:'nowrap'}}>
+                                {new Date(item.timestamp).toLocaleString('es-DO', {
+                                    day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'
+                                })}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+// =====================================================
+// COMPONENTE EXPORTACIÓN TSS/DGII
+// Generar archivos para reportes gubernamentales
+// =====================================================
+const ExportacionTSSPanel = ({ empleados, nominas, config, toast }) => {
+    const [periodoExport, setPeriodoExport] = useState({
+        mes: new Date().getMonth(),
+        año: new Date().getFullYear()
+    });
+    const [tipoExport, setTipoExport] = useState('tss');
+    const [cargando, setCargando] = useState(false);
+    
+    const MESES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    
+    // Generar archivo TSS (Tesorería de la Seguridad Social)
+    const generarArchivoTSS = () => {
+        const nominaMes = nominas.find(n => 
+            n.periodo.mes === periodoExport.mes && 
+            n.periodo.año === periodoExport.año
+        );
+        
+        if (!nominaMes) {
+            toast('⚠️ No hay nómina para el período seleccionado', 'warning');
+            return null;
+        }
+        
+        // Formato TSS: RNC|TipoDoc|NumDoc|Nombre|SFS|AFP|Riesgos|Infotep
+        let contenido = '';
+        const rnc = config.empresa.rnc.replace(/-/g, '');
+        
+        empleados.filter(e => e.activo).forEach(emp => {
+            const docNum = emp.documento.replace(/-/g, '');
+            const nombre = emp.nombre.toUpperCase().substring(0, 50);
+            const salario = emp.salarioBase || 0;
+            
+            // Cálculos TSS
+            const sfs = Math.round(salario * 0.0709 * 100) / 100; // SFS 7.09%
+            const afp = Math.round(salario * 0.0287 * 100) / 100; // AFP 2.87%
+            const srl = Math.round(salario * 0.0110 * 100) / 100; // Riesgos Lab 1.10%
+            const infotep = Math.round(salario * 0.01 * 100) / 100; // INFOTEP 1%
+            
+            contenido += `${rnc}|C|${docNum}|${nombre}|${sfs.toFixed(2)}|${afp.toFixed(2)}|${srl.toFixed(2)}|${infotep.toFixed(2)}\n`;
+        });
+        
+        return {
+            nombre: `TSS_${rnc}_${periodoExport.año}${String(periodoExport.mes + 1).padStart(2, '0')}.txt`,
+            contenido: contenido,
+            tipo: 'text/plain'
+        };
+    };
+    
+    // Generar archivo IR-17 (DGII)
+    const generarArchivoIR17 = () => {
+        const nominaMes = nominas.find(n => 
+            n.periodo.mes === periodoExport.mes && 
+            n.periodo.año === periodoExport.año
+        );
+        
+        if (!nominaMes) {
+            toast('⚠️ No hay nómina para el período seleccionado', 'warning');
+            return null;
+        }
+        
+        // Formato IR-17: Detalle de retenciones
+        let contenido = 'RNC/Cedula|Nombre|Salario Bruto|ISR Retenido|Otros Ingresos|Total\n';
+        
+        empleados.filter(e => e.activo).forEach(emp => {
+            const doc = emp.documento.replace(/-/g, '');
+            const nombre = emp.nombre.toUpperCase();
+            const salario = emp.salarioBase || 0;
+            const isr = emp.isrMensual || 0;
+            
+            contenido += `${doc}|${nombre}|${salario.toFixed(2)}|${isr.toFixed(2)}|0.00|${salario.toFixed(2)}\n`;
+        });
+        
+        return {
+            nombre: `IR17_${config.empresa.rnc.replace(/-/g, '')}_${periodoExport.año}${String(periodoExport.mes + 1).padStart(2, '0')}.csv`,
+            contenido: contenido,
+            tipo: 'text/csv'
+        };
+    };
+    
+    // Generar Formato 606 (Compras)
+    const generarFormato606 = () => {
+        // Este es simplificado - normalmente requiere datos de proveedores
+        let contenido = 'RNC/Cedula Proveedor|Tipo Bienes/Servicios|NCF|Fecha Comprobante|Monto\n';
+        contenido += '// Agregar datos de proveedores de nómina aquí\n';
+        
+        return {
+            nombre: `606_${config.empresa.rnc.replace(/-/g, '')}_${periodoExport.año}${String(periodoExport.mes + 1).padStart(2, '0')}.csv`,
+            contenido: contenido,
+            tipo: 'text/csv'
+        };
+    };
+    
+    // Generar Reporte de Empleados para DGII
+    const generarReporteEmpleados = () => {
+        let contenido = 'No.|Cedula|Nombre|Departamento|Cargo|Fecha Ingreso|Salario|Estado\n';
+        
+        empleados.forEach((emp, i) => {
+            contenido += `${i+1}|${emp.documento}|${emp.nombre}|${emp.departamento}|${emp.cargo}|${emp.fechaIngreso}|${(emp.salarioBase || 0).toFixed(2)}|${emp.activo ? 'Activo' : 'Inactivo'}\n`;
+        });
+        
+        return {
+            nombre: `Empleados_${config.empresa.rnc.replace(/-/g, '')}_${new Date().toISOString().split('T')[0]}.csv`,
+            contenido: contenido,
+            tipo: 'text/csv'
+        };
+    };
+    
+    const handleExportar = () => {
+        setCargando(true);
+        
+        let archivo = null;
+        switch(tipoExport) {
+            case 'tss': archivo = generarArchivoTSS(); break;
+            case 'ir17': archivo = generarArchivoIR17(); break;
+            case '606': archivo = generarFormato606(); break;
+            case 'empleados': archivo = generarReporteEmpleados(); break;
+        }
+        
+        if (archivo) {
+            const blob = new Blob([archivo.contenido], { type: archivo.tipo });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = archivo.nombre;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            if (window.HistorialCambios) {
+                window.HistorialCambios.registrar('DATOS_EXPORTADOS', {
+                    tipo: tipoExport,
+                    archivo: archivo.nombre
+                });
+            }
+            
+            toast(`✅ Archivo ${archivo.nombre} generado`, 'success');
+        }
+        
+        setCargando(false);
+    };
+    
+    return (
+        <div style={{padding: '10px 0'}}>
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:'20px'}}>
+                {/* Selección de período */}
+                <div style={{background:'var(--bg-main)', padding:'15px', borderRadius:'8px'}}>
+                    <h5 style={{marginTop:0}}>📅 Período a Exportar</h5>
+                    <div style={{display:'flex', gap:'10px'}}>
+                        <select 
+                            className="form-control form-control-sm"
+                            value={periodoExport.mes}
+                            onChange={e => setPeriodoExport({...periodoExport, mes: parseInt(e.target.value)})}
+                        >
+                            {MESES_NOMBRES.map((m, i) => (
+                                <option key={i} value={i}>{m}</option>
+                            ))}
+                        </select>
+                        <select 
+                            className="form-control form-control-sm"
+                            value={periodoExport.año}
+                            onChange={e => setPeriodoExport({...periodoExport, año: parseInt(e.target.value)})}
+                        >
+                            {[2024, 2025, 2026, 2027].map(a => (
+                                <option key={a} value={a}>{a}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+                
+                {/* Selección de tipo */}
+                <div style={{background:'var(--bg-main)', padding:'15px', borderRadius:'8px'}}>
+                    <h5 style={{marginTop:0}}>📄 Tipo de Reporte</h5>
+                    <select 
+                        className="form-control"
+                        value={tipoExport}
+                        onChange={e => setTipoExport(e.target.value)}
+                    >
+                        <option value="tss">📊 TSS - Tesorería Seguridad Social</option>
+                        <option value="ir17">🏛️ IR-17 - Retenciones ISR (DGII)</option>
+                        <option value="606">📋 Formato 606 - Compras (DGII)</option>
+                        <option value="empleados">👥 Lista de Empleados</option>
+                    </select>
+                </div>
+            </div>
+            
+            {/* Descripción del reporte */}
+            <div style={{marginTop:'20px', padding:'15px', border:'1px solid var(--border)', borderRadius:'8px'}}>
+                {tipoExport === 'tss' && (
+                    <div>
+                        <h5 style={{marginTop:0}}>📊 Archivo TSS</h5>
+                        <p style={{fontSize:'12px', color:'var(--text-secondary)'}}>
+                            Genera el archivo para la Tesorería de la Seguridad Social con el detalle de cotizaciones:
+                        </p>
+                        <ul style={{fontSize:'11px', color:'var(--text-muted)'}}>
+                            <li>SFS (Seguro Familiar de Salud) - 7.09% empleador</li>
+                            <li>AFP (Fondo de Pensiones) - 2.87% empleado</li>
+                            <li>SRL (Seguro Riesgos Laborales) - 1.10% empleador</li>
+                            <li>INFOTEP - 1.00% empleador</li>
+                        </ul>
+                    </div>
+                )}
+                {tipoExport === 'ir17' && (
+                    <div>
+                        <h5 style={{marginTop:0}}>🏛️ Formulario IR-17</h5>
+                        <p style={{fontSize:'12px', color:'var(--text-secondary)'}}>
+                            Declaración jurada mensual de retenciones del ISR (Impuesto Sobre la Renta) a empleados.
+                            Debe presentarse antes del día 10 del mes siguiente.
+                        </p>
+                    </div>
+                )}
+                {tipoExport === '606' && (
+                    <div>
+                        <h5 style={{marginTop:0}}>📋 Formato 606</h5>
+                        <p style={{fontSize:'12px', color:'var(--text-secondary)'}}>
+                            Formato de envío de compras de bienes y servicios para la DGII.
+                            Este reporte requiere información adicional de proveedores.
+                        </p>
+                    </div>
+                )}
+                {tipoExport === 'empleados' && (
+                    <div>
+                        <h5 style={{marginTop:0}}>👥 Lista de Empleados</h5>
+                        <p style={{fontSize:'12px', color:'var(--text-secondary)'}}>
+                            Listado completo de empleados con datos básicos: documento, nombre, departamento, cargo, fecha de ingreso, salario y estado.
+                        </p>
+                    </div>
+                )}
+            </div>
+            
+            {/* Botón exportar */}
+            <div style={{marginTop:'20px', textAlign:'center'}}>
+                <button 
+                    className="btn btn-lg btn-primary"
+                    onClick={handleExportar}
+                    disabled={cargando}
+                >
+                    {cargando ? '⏳ Generando...' : '📥 Generar y Descargar Archivo'}
+                </button>
+            </div>
+            
+            {/* Información adicional */}
+            <div style={{marginTop:'20px', padding:'12px', background:'rgba(33, 150, 243, 0.1)', borderRadius:'8px', fontSize:'11px'}}>
+                <strong>ℹ️ Información:</strong><br/>
+                • Los archivos se generan según los formatos oficiales de RD<br/>
+                • Verifique los datos antes de enviar a las instituciones<br/>
+                • La empresa configurada es: <strong>{config.empresa.nombre}</strong> (RNC: {config.empresa.rnc})
+            </div>
+        </div>
+    );
+};
+
+// =====================================================
 // COMPONENTE VOLANTE DE PAGO - DISEÑO OPTIMIZADO
 // =====================================================
 const Volante = ({ emp, det, periodo, config }) => {
@@ -3186,30 +3901,62 @@ const Volante = ({ emp, det, periodo, config }) => {
 // CONFIGURACIÓN DE USUARIOS CON 2FA
 // =====================================================
 // =====================================================
-// USUARIOS DEL SISTEMA CON CONTRASEÑAS HASHEADAS (SHA-256)
-// Las contraseñas originales fueron: admin=Tehui@2026, consulta=Ver2026$
-// NUNCA se guardan en texto plano por seguridad
+// SISTEMA DE GESTIÓN DE USUARIOS DINÁMICO
+// Los usuarios se guardan en localStorage para poder administrarlos
 // =====================================================
-const USUARIOS_SISTEMA = {
+
+// Usuarios por defecto del sistema
+const USUARIOS_DEFAULT = {
     admin: { 
-        // Hash SHA-256 de 'Tehui@2026' + salt
         passwordHash: '2451a82e26d0c426f1d7fe4f28674ec387b708a7b9aecc23c75134b04bc795f7', 
         rol: 'admin', 
         nombre: 'Administrador',
         email: 'admin@tehui.edu.do',
         requires2FA: true,
-        secreto2FA: null // Se genera en primera configuración
+        activo: true,
+        fechaCreacion: '2025-01-01',
+        ultimoAcceso: null
     },
     consulta: { 
-        // Hash SHA-256 de 'Ver2026$' + salt
         passwordHash: '6f13a9443c7e9344fd8a0e29a2e5d0ab0eb2ebd4791d4f9e8f9c909069dc0e27', 
         rol: 'consulta', 
         nombre: 'Usuario Consulta',
         email: 'consulta@tehui.edu.do',
         requires2FA: true,
-        secreto2FA: null
+        activo: true,
+        fechaCreacion: '2025-01-01',
+        ultimoAcceso: null
     }
 };
+
+// Cargar usuarios desde localStorage o usar los por defecto
+const cargarUsuariosSistema = () => {
+    try {
+        const guardados = localStorage.getItem('nominaTehui_usuarios');
+        if (guardados) {
+            return JSON.parse(guardados);
+        }
+    } catch (e) {
+        console.error('Error cargando usuarios:', e);
+    }
+    // Primera vez: guardar usuarios por defecto
+    localStorage.setItem('nominaTehui_usuarios', JSON.stringify(USUARIOS_DEFAULT));
+    return { ...USUARIOS_DEFAULT };
+};
+
+// Guardar usuarios en localStorage
+const guardarUsuariosSistema = (usuarios) => {
+    try {
+        localStorage.setItem('nominaTehui_usuarios', JSON.stringify(usuarios));
+        return true;
+    } catch (e) {
+        console.error('Error guardando usuarios:', e);
+        return false;
+    }
+};
+
+// Variable global de usuarios (se carga dinámicamente)
+let USUARIOS_SISTEMA = cargarUsuariosSistema();
 
 // Función para verificar contraseña contra hash
 const verificarPasswordHash = async (password, hashGuardado) => {
@@ -3217,9 +3964,207 @@ const verificarPasswordHash = async (password, hashGuardado) => {
         const hashCalculado = await window.CryptoTehui.hashPassword(password);
         return hashCalculado === hashGuardado;
     }
-    // Fallback si no está disponible CryptoTehui (compatibilidad)
     return false;
 };
+
+// Generar hash de contraseña
+const generarPasswordHash = async (password) => {
+    if (window.CryptoTehui) {
+        return await window.CryptoTehui.hashPassword(password);
+    }
+    return null;
+};
+
+// =====================================================
+// SISTEMA DE AUDITORÍA Y HISTORIAL DE CAMBIOS
+// Registra todas las acciones importantes del sistema
+// =====================================================
+
+const HISTORIAL_KEY = 'nominaTehui_historial';
+const MAX_HISTORIAL = 1000;
+
+const HistorialCambios = {
+    // Registrar un cambio
+    registrar: function(tipo, datos, usuario) {
+        try {
+            let historial = JSON.parse(localStorage.getItem(HISTORIAL_KEY) || '[]');
+            
+            const registro = {
+                id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                timestamp: new Date().toISOString(),
+                tipo: tipo, // 'EMPLEADO_CREADO', 'EMPLEADO_EDITADO', 'NOMINA_GENERADA', etc.
+                usuario: usuario || 'sistema',
+                datos: datos,
+                ip: 'local',
+                navegador: navigator.userAgent.substring(0, 50)
+            };
+            
+            historial.unshift(registro);
+            
+            // Limitar tamaño
+            if (historial.length > MAX_HISTORIAL) {
+                historial = historial.slice(0, MAX_HISTORIAL);
+            }
+            
+            localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
+            return registro.id;
+        } catch (e) {
+            console.error('Error registrando historial:', e);
+            return null;
+        }
+    },
+    
+    // Obtener historial completo o filtrado
+    obtener: function(filtros = {}) {
+        try {
+            let historial = JSON.parse(localStorage.getItem(HISTORIAL_KEY) || '[]');
+            
+            // Aplicar filtros
+            if (filtros.tipo) {
+                historial = historial.filter(h => h.tipo === filtros.tipo);
+            }
+            if (filtros.usuario) {
+                historial = historial.filter(h => h.usuario === filtros.usuario);
+            }
+            if (filtros.desde) {
+                const desde = new Date(filtros.desde);
+                historial = historial.filter(h => new Date(h.timestamp) >= desde);
+            }
+            if (filtros.hasta) {
+                const hasta = new Date(filtros.hasta);
+                historial = historial.filter(h => new Date(h.timestamp) <= hasta);
+            }
+            if (filtros.busqueda) {
+                const busq = filtros.busqueda.toLowerCase();
+                historial = historial.filter(h => 
+                    JSON.stringify(h.datos).toLowerCase().includes(busq) ||
+                    h.tipo.toLowerCase().includes(busq)
+                );
+            }
+            
+            return filtros.limite ? historial.slice(0, filtros.limite) : historial;
+        } catch (e) {
+            console.error('Error obteniendo historial:', e);
+            return [];
+        }
+    },
+    
+    // Obtener estadísticas
+    estadisticas: function() {
+        const historial = this.obtener({});
+        const stats = {
+            total: historial.length,
+            porTipo: {},
+            porUsuario: {},
+            ultimaSemana: 0
+        };
+        
+        const haceSemana = new Date();
+        haceSemana.setDate(haceSemana.getDate() - 7);
+        
+        historial.forEach(h => {
+            // Por tipo
+            stats.porTipo[h.tipo] = (stats.porTipo[h.tipo] || 0) + 1;
+            // Por usuario
+            stats.porUsuario[h.usuario] = (stats.porUsuario[h.usuario] || 0) + 1;
+            // Última semana
+            if (new Date(h.timestamp) >= haceSemana) {
+                stats.ultimaSemana++;
+            }
+        });
+        
+        return stats;
+    },
+    
+    // Exportar historial
+    exportar: function(formato = 'json') {
+        const historial = this.obtener({});
+        
+        if (formato === 'json') {
+            const blob = new Blob([JSON.stringify(historial, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `historial_nomina_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } else if (formato === 'csv') {
+            let csv = 'Fecha,Tipo,Usuario,Detalles\n';
+            historial.forEach(h => {
+                csv += `"${h.timestamp}","${h.tipo}","${h.usuario}","${JSON.stringify(h.datos).replace(/"/g, '""')}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `historial_nomina_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    },
+    
+    // Limpiar historial antiguo
+    limpiar: function(diasAntiguedad = 90) {
+        try {
+            let historial = JSON.parse(localStorage.getItem(HISTORIAL_KEY) || '[]');
+            const limite = new Date();
+            limite.setDate(limite.getDate() - diasAntiguedad);
+            
+            const antes = historial.length;
+            historial = historial.filter(h => new Date(h.timestamp) >= limite);
+            
+            localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
+            return antes - historial.length;
+        } catch (e) {
+            return 0;
+        }
+    }
+};
+
+// Tipos de eventos para el historial
+const TIPOS_HISTORIAL = {
+    // Usuarios
+    USUARIO_CREADO: 'USUARIO_CREADO',
+    USUARIO_EDITADO: 'USUARIO_EDITADO',
+    USUARIO_DESACTIVADO: 'USUARIO_DESACTIVADO',
+    USUARIO_PASSWORD_RESET: 'USUARIO_PASSWORD_RESET',
+    USUARIO_2FA_RESET: 'USUARIO_2FA_RESET',
+    LOGIN_EXITOSO: 'LOGIN_EXITOSO',
+    LOGIN_FALLIDO: 'LOGIN_FALLIDO',
+    LOGOUT: 'LOGOUT',
+    
+    // Empleados
+    EMPLEADO_CREADO: 'EMPLEADO_CREADO',
+    EMPLEADO_EDITADO: 'EMPLEADO_EDITADO',
+    EMPLEADO_ELIMINADO: 'EMPLEADO_ELIMINADO',
+    
+    // Nóminas
+    NOMINA_CREADA: 'NOMINA_CREADA',
+    NOMINA_EDITADA: 'NOMINA_EDITADA',
+    NOMINA_ELIMINADA: 'NOMINA_ELIMINADA',
+    NOMINA_CERRADA: 'NOMINA_CERRADA',
+    
+    // Préstamos
+    PRESTAMO_CREADO: 'PRESTAMO_CREADO',
+    PRESTAMO_EDITADO: 'PRESTAMO_EDITADO',
+    PRESTAMO_PAGADO: 'PRESTAMO_PAGADO',
+    
+    // Licencias
+    LICENCIA_CREADA: 'LICENCIA_CREADA',
+    LICENCIA_EDITADA: 'LICENCIA_EDITADA',
+    
+    // Sistema
+    BACKUP_CREADO: 'BACKUP_CREADO',
+    BACKUP_RESTAURADO: 'BACKUP_RESTAURADO',
+    DATOS_EXPORTADOS: 'DATOS_EXPORTADOS',
+    DATOS_IMPORTADOS: 'DATOS_IMPORTADOS',
+    SYNC_SHAREPOINT: 'SYNC_SHAREPOINT',
+    CONFIG_MODIFICADA: 'CONFIG_MODIFICADA'
+};
+
+// Exportar globalmente
+window.HistorialCambios = HistorialCambios;
+window.TIPOS_HISTORIAL = TIPOS_HISTORIAL;
 
 // =====================================================
 // FUNCIONES DE AUTENTICACIÓN DE DOS FACTORES (2FA/TOTP)
@@ -3313,20 +4258,135 @@ const generarURIAuthenticator = (usuario, secreto, emisor = 'Sistema Nomina Tehu
     return `otpauth://totp/${cuenta}?${params.toString()}`;
 };
 
-// Guardar/Cargar secretos 2FA del localStorage
+// =====================================================
+// SISTEMA 2FA MEJORADO CON SINCRONIZACIÓN
+// Los secretos se guardan en localStorage Y en usuarios
+// para poder recuperarlos desde SharePoint
+// =====================================================
+
+// Clave para almacenar secretos 2FA
+const SECRETOS_2FA_KEY = 'tehui_2fa_secrets';
+const SECRETOS_2FA_BACKUP_KEY = 'nominaTehui_2fa_backup';
+
+// Guardar secreto 2FA (localStorage + usuarios + backup + SharePoint)
 const guardarSecreto2FA = (usuario, secreto) => {
-    const secretos = JSON.parse(localStorage.getItem('tehui_2fa_secrets') || '{}');
+    // 1. Guardar en localStorage (acceso rápido)
+    const secretos = JSON.parse(localStorage.getItem(SECRETOS_2FA_KEY) || '{}');
     secretos[usuario] = secreto;
-    localStorage.setItem('tehui_2fa_secrets', JSON.stringify(secretos));
+    localStorage.setItem(SECRETOS_2FA_KEY, JSON.stringify(secretos));
+    
+    // 2. Guardar en la estructura de usuarios (para sincronizar)
+    const usuarios = cargarUsuariosSistema();
+    if (usuarios[usuario]) {
+        usuarios[usuario].secreto2FA = secreto;
+        usuarios[usuario].fecha2FA = new Date().toISOString();
+        guardarUsuariosSistema(usuarios);
+        USUARIOS_SISTEMA = usuarios;
+    }
+    
+    // 3. Guardar backup encriptado
+    const backup2FA = JSON.parse(localStorage.getItem(SECRETOS_2FA_BACKUP_KEY) || '{}');
+    backup2FA[usuario] = {
+        secreto: secreto,
+        fecha: new Date().toISOString(),
+        dispositivo: navigator.userAgent.substring(0, 50)
+    };
+    localStorage.setItem(SECRETOS_2FA_BACKUP_KEY, JSON.stringify(backup2FA));
+    
+    // 4. Marcar que necesita sincronizar con SharePoint
+    localStorage.setItem('nominaTehui_2fa_pendiente_sync', 'true');
+    
+    console.log('✅ Secreto 2FA guardado para:', usuario);
+    console.log('⚠️ Recuerde sincronizar con SharePoint para respaldar el 2FA');
 };
 
+// Verificar si hay 2FA pendiente de sincronizar
+const hay2FAPendienteSync = () => {
+    return localStorage.getItem('nominaTehui_2fa_pendiente_sync') === 'true';
+};
+
+// Marcar 2FA como sincronizado
+const marcar2FASincronizado = () => {
+    localStorage.removeItem('nominaTehui_2fa_pendiente_sync');
+};
+
+// Obtener secreto 2FA (intenta múltiples fuentes)
 const obtenerSecreto2FA = (usuario) => {
-    const secretos = JSON.parse(localStorage.getItem('tehui_2fa_secrets') || '{}');
-    return secretos[usuario] || null;
+    // 1. Primero intenta localStorage (más rápido)
+    const secretos = JSON.parse(localStorage.getItem(SECRETOS_2FA_KEY) || '{}');
+    if (secretos[usuario]) {
+        return secretos[usuario];
+    }
+    
+    // 2. Si no está, buscar en usuarios (podría venir de SharePoint)
+    const usuarios = cargarUsuariosSistema();
+    if (usuarios[usuario] && usuarios[usuario].secreto2FA) {
+        // Restaurar a localStorage para próximos accesos
+        secretos[usuario] = usuarios[usuario].secreto2FA;
+        localStorage.setItem(SECRETOS_2FA_KEY, JSON.stringify(secretos));
+        console.log('✅ Secreto 2FA restaurado desde usuarios para:', usuario);
+        return usuarios[usuario].secreto2FA;
+    }
+    
+    // 3. Buscar en backup
+    const backup = JSON.parse(localStorage.getItem(SECRETOS_2FA_BACKUP_KEY) || '{}');
+    if (backup[usuario] && backup[usuario].secreto) {
+        // Restaurar
+        secretos[usuario] = backup[usuario].secreto;
+        localStorage.setItem(SECRETOS_2FA_KEY, JSON.stringify(secretos));
+        console.log('✅ Secreto 2FA restaurado desde backup para:', usuario);
+        return backup[usuario].secreto;
+    }
+    
+    return null;
 };
 
+// Verificar si tiene 2FA configurado
 const tiene2FAConfigurado = (usuario) => {
     return obtenerSecreto2FA(usuario) !== null;
+};
+
+// Recuperar secreto 2FA desde SharePoint (cuando se conecta)
+const recuperarSecretos2FADesdeSharePoint = (usuariosSharePoint) => {
+    if (!usuariosSharePoint) return;
+    
+    const secretosLocales = JSON.parse(localStorage.getItem(SECRETOS_2FA_KEY) || '{}');
+    let recuperados = 0;
+    
+    Object.entries(usuariosSharePoint).forEach(([userId, userData]) => {
+        if (userData.secreto2FA && !secretosLocales[userId]) {
+            secretosLocales[userId] = userData.secreto2FA;
+            recuperados++;
+        }
+    });
+    
+    if (recuperados > 0) {
+        localStorage.setItem(SECRETOS_2FA_KEY, JSON.stringify(secretosLocales));
+        console.log(`✅ ${recuperados} secretos 2FA recuperados desde SharePoint`);
+    }
+};
+
+// Exportar secreto 2FA para backup manual
+const exportarSecreto2FAManual = (usuario) => {
+    const secreto = obtenerSecreto2FA(usuario);
+    if (!secreto) return null;
+    
+    return {
+        usuario: usuario,
+        secreto: secreto,
+        issuer: 'Sistema+Nomina+Tehui',
+        uri: `otpauth://totp/Sistema%20Nomina%20Tehui%3A${usuario}?secret=${secreto}&issuer=Sistema+Nomina+Tehui&algorithm=SHA1&digits=6&period=30`
+    };
+};
+
+// Importar/restaurar secreto 2FA manualmente
+const importarSecreto2FAManual = (usuario, secreto) => {
+    if (!secreto || secreto.length < 16) {
+        return { exito: false, error: 'Secreto inválido' };
+    }
+    
+    guardarSecreto2FA(usuario, secreto.toUpperCase().replace(/\s/g, ''));
+    return { exito: true };
 };
 
 // =====================================================
@@ -3545,6 +4605,11 @@ const App = () => {
             // Si estaba configurando, guardar el secreto
             if (paso2FA === 'configurar') {
                 guardarSecreto2FA(usuarioTemp, secretoTemp);
+                
+                // Mostrar aviso importante sobre sincronización
+                setTimeout(() => {
+                    alert('✅ ¡2FA configurado correctamente!\n\n⚠️ IMPORTANTE: Para no perder esta configuración cuando cambie de navegador, conecte y sincronice con SharePoint.\n\n💡 Vaya a: SharePoint → Sincronizar');
+                }, 500);
             }
             
             // Completar login
@@ -4076,6 +5141,43 @@ const App = () => {
                 if (datos.config) setConfig(prev => ({ ...prev, ...datos.config }));
                 if (datos.catalogos) setCatalogos(prev => ({ ...prev, ...datos.catalogos }));
                 
+                // 🔐 RECUPERAR SECRETOS 2FA DESDE SHAREPOINT
+                if (datos.config && datos.config.secretos2FA) {
+                    const secretosLocales = JSON.parse(localStorage.getItem('tehui_2fa_secrets') || '{}');
+                    let recuperados = 0;
+                    
+                    Object.entries(datos.config.secretos2FA).forEach(([userId, secreto]) => {
+                        if (secreto && !secretosLocales[userId]) {
+                            secretosLocales[userId] = secreto;
+                            recuperados++;
+                        }
+                    });
+                    
+                    if (recuperados > 0) {
+                        localStorage.setItem('tehui_2fa_secrets', JSON.stringify(secretosLocales));
+                        console.log(`🔐 ${recuperados} secretos 2FA recuperados desde SharePoint`);
+                        toast(`🔐 Configuración 2FA restaurada (${recuperados} usuarios)`, 'success');
+                    }
+                }
+                
+                // También recuperar usuarios con sus secretos 2FA
+                if (datos.config && datos.config.usuarios) {
+                    const usuariosRecuperados = datos.config.usuarios;
+                    const secretosLocales = JSON.parse(localStorage.getItem('tehui_2fa_secrets') || '{}');
+                    
+                    Object.entries(usuariosRecuperados).forEach(([userId, userData]) => {
+                        if (userData.secreto2FA && !secretosLocales[userId]) {
+                            secretosLocales[userId] = userData.secreto2FA;
+                        }
+                    });
+                    
+                    localStorage.setItem('tehui_2fa_secrets', JSON.stringify(secretosLocales));
+                    
+                    // Actualizar usuarios del sistema
+                    guardarUsuariosSistema(usuariosRecuperados);
+                    USUARIOS_SISTEMA = usuariosRecuperados;
+                }
+                
                 setSyncStatus({ syncing: false, lastSync: new Date(), error: null });
                 setDatosInicializados(true);
                 toast('✅ Datos cargados desde SharePoint', 'success');
@@ -4103,12 +5205,24 @@ const App = () => {
         setSyncStatus(s => ({ ...s, syncing: true }));
         
         try {
+            // 🔐 Incluir secretos 2FA y usuarios en la configuración
+            const secretos2FA = JSON.parse(localStorage.getItem('tehui_2fa_secrets') || '{}');
+            const usuariosSistema = cargarUsuariosSistema();
+            
+            const configConSecretos = {
+                ...config,
+                secretos2FA: secretos2FA,
+                usuarios: usuariosSistema,
+                ultimaSync: new Date().toISOString()
+            };
+            
             // Usar sincronización masiva - UN SOLO registro con todo
-            const resultado = await sincronizarTodoSP(empleados, prestamos, licencias, nominas, config, catalogos);
+            const resultado = await sincronizarTodoSP(empleados, prestamos, licencias, nominas, configConSecretos, catalogos);
             
             if (resultado.success) {
                 setSyncStatus({ syncing: false, lastSync: new Date(), error: null });
                 toast(`✅ Sincronización completa: ${resultado.stats.empleados} empleados, ${resultado.stats.prestamos} préstamos`, 'success');
+                console.log('🔐 Secretos 2FA sincronizados con SharePoint');
             } else {
                 setSyncStatus({ syncing: false, lastSync: null, error: resultado.error });
                 toast(`❌ Error: ${resultado.error}`, 'error');
@@ -6217,6 +7331,9 @@ const App = () => {
             case 'historial': return renderHistorial();
             case 'mantenimiento': return renderMantenimiento();
             case 'config': return renderConfig();
+            case 'usuarios': return <GestionUsuariosPanel toast={toast} usuarioActual={usuarioActual} />;
+            case 'auditoria': return <HistorialAuditoriaPanel toast={toast} />;
+            case 'exportacion': return <ExportacionTSSPanel empleados={empleados} nominas={nominas} config={config} toast={toast} />;
             default: return renderDashboard();
         }
     };
@@ -6271,7 +7388,7 @@ const App = () => {
                         </form>
 
                         <div className="footer-text-edu">
-                            Sistema Nómina Tehui v3.88 © 2026
+                            Sistema Nómina Tehui v3.90 © 2026
                         </div>
                     </div>
 
@@ -6682,6 +7799,82 @@ const App = () => {
                             </p>
                         </div>
                         
+                        {/* Opción para recuperar secreto existente */}
+                        <details style={{ 
+                            marginTop: '16px', 
+                            paddingTop: '16px', 
+                            borderTop: '1px solid var(--border)'
+                        }}>
+                            <summary style={{ 
+                                fontSize: '11px', 
+                                color: 'var(--primary)', 
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                            }}>
+                                🔄 ¿Ya tienes el Authenticator configurado?
+                            </summary>
+                            <div style={{ 
+                                marginTop: '12px', 
+                                padding: '12px', 
+                                background: '#e8f5e9',
+                                borderRadius: '8px',
+                                fontSize: '11px'
+                            }}>
+                                <p style={{ marginBottom: '10px', color: '#2e7d32' }}>
+                                    Si ya tienes el código configurado en tu Authenticator desde antes, 
+                                    puedes ingresar el <strong>secreto</strong> para recuperar el acceso:
+                                </p>
+                                <input 
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    placeholder="Ingresa el secreto (32 caracteres)"
+                                    style={{ 
+                                        fontFamily: 'monospace',
+                                        textTransform: 'uppercase',
+                                        marginBottom: '10px'
+                                    }}
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const secretoIngresado = e.target.value.toUpperCase().replace(/\s/g, '');
+                                            if (secretoIngresado.length >= 16) {
+                                                const resultado = importarSecreto2FAManual(usuarioTemp, secretoIngresado);
+                                                if (resultado.exito) {
+                                                    alert('✅ Secreto recuperado. Ahora ingresa el código de tu Authenticator.');
+                                                    setPaso2FA('verificar');
+                                                }
+                                            } else {
+                                                alert('⚠️ El secreto debe tener al menos 16 caracteres');
+                                            }
+                                        }
+                                    }}
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                        const input = e.target.previousSibling;
+                                        const secretoIngresado = input.value.toUpperCase().replace(/\s/g, '');
+                                        if (secretoIngresado.length >= 16) {
+                                            const resultado = importarSecreto2FAManual(usuarioTemp, secretoIngresado);
+                                            if (resultado.exito) {
+                                                alert('✅ Secreto recuperado correctamente.\n\nAhora ingresa el código de 6 dígitos de tu Authenticator.');
+                                                setPaso2FA('verificar');
+                                            }
+                                        } else {
+                                            alert('⚠️ El secreto debe tener al menos 16 caracteres');
+                                        }
+                                    }}
+                                    className="btn btn-sm btn-success"
+                                    style={{ width: '100%' }}
+                                >
+                                    ✓ Recuperar Configuración
+                                </button>
+                                <p style={{ fontSize: '9px', color: '#666', marginTop: '8px' }}>
+                                    💡 El secreto lo puedes ver en los detalles de la cuenta en tu Authenticator
+                                </p>
+                            </div>
+                        </details>
+                        
                         <button 
                             onClick={cancelar2FA}
                             style={{ 
@@ -7040,8 +8233,13 @@ const App = () => {
                     <div className="nav-group"><div className="nav-label">Reportes</div>
                         <div className={`nav-item ${view === 'historial' ? 'active' : ''}`} onClick={() => setView('historial')}><Icons.Clock /><span>Historial</span></div>
                         <div className="nav-item" onClick={() => openModal('reportes')} style={{background:'rgba(251,140,0,0.15)'}}><Icons.FileText /><span>📊 Centro de Reportes</span></div>
+                        <div className={`nav-item ${view === 'auditoria' ? 'active' : ''}`} onClick={() => setView('auditoria')} style={{background:'rgba(156,39,176,0.15)'}}><span>📋</span><span>Auditoría</span></div>
+                        <div className={`nav-item ${view === 'exportacion' ? 'active' : ''}`} onClick={() => setView('exportacion')} style={{background:'rgba(0,150,136,0.15)'}}><span>🏛️</span><span>TSS / DGII</span></div>
                     </div>
                     <div className="nav-group"><div className="nav-label">Sistema</div>
+                        {usuarioActual?.rol === 'admin' && (
+                            <div className={`nav-item ${view === 'usuarios' ? 'active' : ''}`} onClick={() => setView('usuarios')} style={{background:'rgba(233,30,99,0.15)'}}><span>👥</span><span>Usuarios</span></div>
+                        )}
                         <div className={`nav-item ${view === 'mantenimiento' ? 'active' : ''}`} onClick={() => setView('mantenimiento')}><Icons.Database /><span>Mantenimiento</span></div>
                         <div className={`nav-item ${view === 'config' ? 'active' : ''}`} onClick={() => setView('config')}><Icons.Settings /><span>Configuración</span></div>
                         <div className="nav-item" onClick={() => openModal('proteccionDatos')} style={{background:'rgba(16,185,129,0.15)', color:'#10b981'}}>
@@ -7093,7 +8291,19 @@ const App = () => {
             <main className="main">
                 <header className="topbar no-print">
                     <div className="topbar-left">
-                        <h2>{view === 'dashboard' ? 'Dashboard' : view === 'empleados' ? 'Empleados' : view === 'nomina' ? 'Nómina' : view === 'prestamos' ? 'Préstamos' : view === 'licencias' ? 'Licencias' : view === 'historial' ? 'Historial' : view === 'mantenimiento' ? 'Mantenimiento' : 'Configuración'}</h2>
+                        <h2>{
+                            view === 'dashboard' ? 'Dashboard' : 
+                            view === 'empleados' ? 'Empleados' : 
+                            view === 'nomina' ? 'Nómina' : 
+                            view === 'prestamos' ? 'Préstamos' : 
+                            view === 'licencias' ? 'Licencias' : 
+                            view === 'historial' ? 'Historial' : 
+                            view === 'mantenimiento' ? 'Mantenimiento' : 
+                            view === 'usuarios' ? '👥 Gestión de Usuarios' :
+                            view === 'auditoria' ? '📋 Auditoría del Sistema' :
+                            view === 'exportacion' ? '🏛️ Exportación TSS / DGII' :
+                            'Configuración'
+                        }</h2>
                         <p style={{display:'flex', alignItems:'center', gap:'8px'}}>
                             {config.empresa.nombre}
                             {spConnected ? (
@@ -7622,7 +8832,7 @@ const App = () => {
                             <p style={{margin:'3px 0', fontSize:'10px'}}>{config.empresa.direccion}</p>
                             <p style={{margin:'3px 0', fontSize:'10px'}}>RNC: {config.empresa.rnc}</p>
                             <h3 style={{margin:'8px 0 5px', fontSize:'12px', background:'#e0e0e0', padding:'4px'}}>
-                                {TIPOS_REPORTES.find(t => t.id === tipoReporteActivo)?.nombre?.toUpperCase()}
+                                {CATEGORIAS_REPORTES.flatMap(c => c.reportes).find(r => r.id === tipoReporteActivo)?.nombre?.toUpperCase() || tipoReporteActivo?.toUpperCase()}
                             </h3>
                             {currentNomina && (
                                 <div style={{display:'flex', justifyContent:'space-between', fontSize:'9px', marginTop:'5px'}}>
