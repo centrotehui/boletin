@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Nómina Tehui v4.02 - Corrección Impresión Volantes</title>
+    <title>Sistema de Nómina Tehui v4.03 - Volantes 3x Horizontal</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -413,24 +413,28 @@
         /* Print */
         .print-only { display: none; }
         
-        /* ========== VOLANTE - DISEÑO COMPACTO 3 POR PÁGINA ========== */
-        /* Contenedor de volantes */
+        /* ========== VOLANTE - DISEÑO COMPACTO 3 POR PÁGINA HORIZONTAL ========== */
+        /* Contenedor de volantes - Vista previa en pantalla */
         .volantes-container {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 10px;
             padding: 10px;
-            background: #f5f5f5;
+            background: #e0e0e0;
+            justify-content: flex-start;
         }
         
         .volante {
             border: 1px solid #000;
             padding: 8px 10px;
-            margin-bottom: 8px;
             page-break-inside: avoid;
             font-family: Arial, sans-serif;
-            font-size: 11px;
+            font-size: 10px;
             background: #fff;
+            width: calc(33.33% - 10px);
+            min-width: 250px;
+            box-sizing: border-box;
         }
         
         /* Header: Empresa centrada */
@@ -794,254 +798,16 @@
                 break-before: auto;
             }
             
-            /* ========== VOLANTES - FORZAR 3 POR PÁGINA ========== */
-            @page volantes {
-                margin: 5mm 8mm;
-                size: letter portrait;
-            }
-            .volante { page: volantes; }
-            
-            /* Carta portrait: 279mm alto - 10mm márgenes = 269mm. 3 volantes × 88mm = 264mm + gaps */
-            .volante { 
-                border: 1px solid #000 !important; 
-                background: #fff !important; 
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                margin: 0 !important;
-                margin-bottom: 1mm !important;
-                padding: 2mm 3mm !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
-                height: 88mm !important;
-                min-height: 88mm !important;
-                max-height: 88mm !important;
-                overflow: hidden !important;
-                display: flex !important;
-                flex-direction: column !important;
-            }
-            
-            /* Primer volante sin margen superior */
-            .volante:first-child { margin-top: 0 !important; }
-            
-            /* Cada 3er volante fuerza salto de página después */
-            .volante:nth-child(3n) { 
-                page-break-after: always !important;
-                break-after: page !important;
-                margin-bottom: 0 !important;
-            }
-            
-            /* Último volante: sin salto de página después */
-            .volante:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
-            }
-            
-            /* Header */
-            .volante-header { 
-                text-align: center !important;
-                border-bottom: 1px solid #000 !important;
-                padding-bottom: 1.5mm !important;
-                margin-bottom: 1.5mm !important;
-            }
-            .volante-header h2 { font-size: 11pt !important; margin: 0 !important; }
-            .volante-header p { font-size: 8pt !important; margin: 0.5mm 0 !important; }
-            
-            /* Info row */
-            .volante-info-row {
-                display: flex !important;
-                justify-content: space-between !important;
-                font-size: 9pt !important;
-                margin-bottom: 1mm !important;
-            }
-            
-            /* Empleado */
-            .volante-empleado { margin-bottom: 1.5mm !important; }
-            .volante-empleado-nombre { font-size: 11pt !important; font-weight: bold !important; }
-            .volante-empleado-datos { 
-                display: flex !important;
-                justify-content: space-between !important;
-                font-size: 9pt !important;
-                padding: 1mm 0 !important;
-                border-top: 1px solid #999 !important;
-                border-bottom: 1px solid #999 !important;
-            }
-            .volante-empleado-datos label { font-size: 8pt !important; color: #333 !important; }
-            
-            /* Grid */
-            .volante-grid {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                gap: 3mm !important;
-                margin-bottom: 1.5mm !important;
-            }
-            .volante-col h4 { 
-                font-size: 9pt !important; 
-                background: transparent !important;
-                border: 1px solid #333 !important;
-                padding: 1mm !important;
-                margin: 0 0 1mm 0 !important;
-                text-align: center !important;
-                font-weight: bold !important;
-            }
-            .volante-row { font-size: 9pt !important; padding: 0.5mm 1mm !important; }
-            .volante-row.total-row { 
-                border-top: 1px solid #000 !important;
-                font-weight: bold !important;
-                padding-top: 1mm !important;
-                margin-top: 1mm !important;
-            }
-            
-            /* Footer */
-            .volante-footer {
-                display: flex !important;
-                gap: 3mm !important;
-                padding-top: 1.5mm !important;
-                border-top: 1px solid #000 !important;
-                margin-top: auto !important;
-            }
-            .volante-firma { flex: 1 !important; text-align: center !important; }
-            .volante-firma-line { border-bottom: 1px solid #000 !important; height: 12mm !important; }
-            .volante-firma span { font-size: 7pt !important; }
-            
-            /* NETO - Sin fondo negro, solo borde grueso para ahorro de tinta */
-            .volante-neto {
-                flex: 1 !important;
-                background: transparent !important;
-                color: #000 !important;
-                padding: 2mm !important;
-                text-align: center !important;
-                border: 2px solid #000 !important;
-            }
-            .volante-neto label { font-size: 8pt !important; color: #000 !important; font-weight: bold !important; }
-            .volante-neto .monto { font-size: 13pt !important; color: #000 !important; font-weight: bold !important; }
-            .volante-totales-ded { flex: 0.8 !important; font-size: 8pt !important; }
-            }
-            
-            /* Datos en línea horizontal - Sin fondo */
-            .volante-datos-linea { 
-                display: flex !important;
-                gap: 2mm !important;
-                background: transparent !important;
-                padding: 0.8mm 1.5mm !important;
-                margin-bottom: 1mm !important;
-                flex-shrink: 0 !important;
-                border: 1px solid #999 !important;
-            }
-            .volante-datos-linea div { flex: 1 !important; }
-            .volante-datos-linea label { font-size: 5px !important; color: #333 !important; text-transform: uppercase !important; }
-            .volante-datos-linea span { font-size: 8px !important; font-weight: 600 !important; }
-            
-            /* Detalle de ingresos y deducciones */
-            .volante-detalle { 
-                gap: 2mm !important; 
-                margin-bottom: 0.5mm !important;
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                flex: 1 !important;
-                min-height: 0 !important;
-                overflow: hidden !important;
-            }
-            .volante-seccion { 
-                display: flex !important;
-                flex-direction: column !important;
-                overflow: hidden !important;
-            }
-            .volante-seccion h4 { 
-                font-size: 7px !important; 
-                padding: 0.4mm 1mm !important; 
-                margin-bottom: 0.4mm !important;
-                background: transparent !important;
-                border: 1px solid #333 !important;
-                font-weight: bold !important;
-                flex-shrink: 0 !important;
-                text-align: center !important;
-            }
-            .volante-linea { 
-                font-size: 8px !important; 
-                padding: 0.3mm 0.8mm !important;
-                display: flex !important;
-                justify-content: space-between !important;
-            }
-            .volante-linea.total { 
-                margin-top: auto !important; 
-                padding: 0.6mm 0.8mm !important;
-                font-weight: bold !important;
-                border-top: 1px solid #333 !important;
-                font-size: 8px !important;
-                background: transparent !important;
-            }
-            
-            /* Ausencias - Sin fondo */
-            .volante-ausencias {
-                background: transparent !important;
-                font-weight: 600 !important;
-            }
-            
-            /* Detalle de fechas de ausencias en impresión */
-            .volante-ausencias-detalle {
-                font-size: 7px !important;
-                color: #333 !important;
-                border-bottom: none !important;
-                padding: 0 0.8mm !important;
-                margin-top: -1px !important;
-            }
-            .volante-ausencias-detalle span {
-                font-style: italic !important;
-            }
-            
-            /* Pie: Firmas + NETO en una fila */
-            .volante-pie {
-                display: flex !important;
-                align-items: flex-end !important;
-                gap: 1.5mm !important;
-                margin-top: auto !important;
-                padding-top: 0.5mm !important;
-                flex-shrink: 0 !important;
-            }
-            .volante-firma-box {
-                flex: 1 !important;
-                text-align: center !important;
-            }
-            .volante-firma-box .volante-firma-linea {
-                border-top: 1px solid #333 !important;
-                height: 4mm !important;
-                margin-bottom: 0.3mm !important;
-            }
-            .volante-firma-box span {
-                font-size: 5px !important;
-                color: #333 !important;
-            }
-            
-            /* NETO BOX - Sin fondo gris, solo borde */
-            .volante-neto-box {
-                flex: 1.2 !important;
-                background: transparent !important;
-                border: 2px solid #000 !important;
-                padding: 0.8mm !important;
-                text-align: center !important;
-            }
-            .volante-neto-box label {
-                font-size: 5px !important;
-                font-weight: bold !important;
-                display: block !important;
-            }
-            .volante-neto-box span {
-                font-size: 10px !important;
-                font-weight: bold !important;
-            }
-            
-            /* Estilos ya definidos arriba para nth-child(3n) y last-child */
-            
             /* Neto destacado - Solo borde, sin fondo */
             .neto-print { background: transparent !important; font-weight: bold !important; border: 2px solid #000 !important; }
             
-            /* ========== IMPRESIÓN DE VOLANTES - 3 POR PÁGINA EXACTO ========== */
-            /* Página portrait para volantes: 279mm alto - 10mm márgenes = 269mm disponibles */
-            /* 3 volantes × 88mm = 264mm + márgenes entre volantes */
+            /* ========== IMPRESIÓN DE VOLANTES - 3 POR PÁGINA HORIZONTAL ========== */
+            /* Página landscape: 11" x 8.5" = 279mm x 216mm */
+            /* 3 volantes lado a lado: ~88mm ancho cada uno */
             
             @page volantes-page {
-                size: letter portrait;
-                margin: 5mm 8mm;
+                size: letter landscape;
+                margin: 5mm;
             }
             
             body.printing-volantes {
@@ -1104,29 +870,32 @@
                 height: auto !important;
             }
             
-            /* Contenedor de volantes */
+            /* Contenedor de volantes - FLEX ROW para 3 lado a lado */
             body.printing-volantes .volantes-container {
                 page: volantes-page;
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 display: flex !important;
-                flex-direction: column !important;
-                gap: 0 !important;
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                gap: 2mm !important;
                 background: white !important;
+                align-content: flex-start !important;
             }
             
-            /* CADA VOLANTE: altura fija 88mm para 3 por página */
-            /* Carta portrait: 279mm alto - 10mm márgenes = 269mm. 3 volantes × 88mm = 264mm */
+            /* CADA VOLANTE: 1/3 del ancho en landscape */
+            /* Landscape: 279mm ancho - 10mm márgenes - 4mm gaps = 265mm / 3 ≈ 88mm */
+            /* Alto disponible: 216mm - 10mm márgenes = 206mm */
             body.printing-volantes .volante {
                 page: volantes-page;
                 box-sizing: border-box !important;
-                width: 100% !important;
-                height: 88mm !important;
-                min-height: 88mm !important;
-                max-height: 88mm !important;
-                margin: 0 0 1mm 0 !important;
-                padding: 2mm 3mm !important;
+                width: calc(33.33% - 2mm) !important;
+                height: 200mm !important;
+                min-height: 200mm !important;
+                max-height: 200mm !important;
+                margin: 0 !important;
+                padding: 3mm !important;
                 border: 1px solid #000 !important;
                 background: white !important;
                 overflow: hidden !important;
@@ -1135,24 +904,200 @@
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 flex-shrink: 0 !important;
+                font-size: 8px !important;
             }
             
-            /* Primer volante de cada grupo de 3: sin margen superior */
-            body.printing-volantes .volante:nth-child(3n+1) {
-                margin-top: 0 !important;
-            }
-            
-            /* Cada 3er volante: salto de página después */
+            /* Cada grupo de 3 volantes: salto de página después */
             body.printing-volantes .volante:nth-child(3n) {
                 page-break-after: always !important;
                 break-after: page !important;
-                margin-bottom: 0 !important;
             }
             
             /* Último volante: sin salto de página después */
             body.printing-volantes .volante:last-child {
                 page-break-after: auto !important;
                 break-after: auto !important;
+            }
+            
+            /* ===== ESTILOS INTERNOS DEL VOLANTE EN IMPRESIÓN ===== */
+            
+            /* Header del volante */
+            body.printing-volantes .volante-header {
+                text-align: center !important;
+                border-bottom: 1px solid #000 !important;
+                padding-bottom: 2mm !important;
+                margin-bottom: 2mm !important;
+                flex-shrink: 0 !important;
+            }
+            body.printing-volantes .volante-header h2 {
+                font-size: 9px !important;
+                font-weight: bold !important;
+                margin: 0 !important;
+                font-style: italic !important;
+            }
+            body.printing-volantes .volante-header p {
+                font-size: 7px !important;
+                margin: 0.5mm 0 !important;
+                font-style: italic !important;
+            }
+            
+            /* Info row: período y nómina */
+            body.printing-volantes .volante-info-row {
+                display: flex !important;
+                flex-direction: column !important;
+                font-size: 7px !important;
+                margin-bottom: 2mm !important;
+                padding: 1mm !important;
+                background: #f5f5f5 !important;
+                border: 1px solid #ccc !important;
+                flex-shrink: 0 !important;
+            }
+            body.printing-volantes .volante-info-row span {
+                text-align: center !important;
+            }
+            body.printing-volantes .volante-info-row label {
+                font-size: 6px !important;
+            }
+            
+            /* Datos del empleado */
+            body.printing-volantes .volante-empleado {
+                margin-bottom: 2mm !important;
+                flex-shrink: 0 !important;
+            }
+            body.printing-volantes .volante-empleado-nombre {
+                font-size: 10px !important;
+                font-weight: bold !important;
+                text-transform: uppercase !important;
+                text-align: center !important;
+                border-bottom: 1px solid #333 !important;
+                padding-bottom: 1mm !important;
+                margin-bottom: 1mm !important;
+            }
+            body.printing-volantes .volante-empleado-datos {
+                display: flex !important;
+                flex-direction: column !important;
+                font-size: 7px !important;
+                gap: 0.5mm !important;
+            }
+            body.printing-volantes .volante-empleado-datos span {
+                display: flex !important;
+                justify-content: space-between !important;
+            }
+            body.printing-volantes .volante-empleado-datos label {
+                font-size: 6px !important;
+                color: #333 !important;
+            }
+            
+            /* Grid de Ingresos y Deducciones */
+            body.printing-volantes .volante-grid {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 2mm !important;
+                flex: 1 !important;
+                overflow: hidden !important;
+            }
+            body.printing-volantes .volante-col {
+                flex: 1 !important;
+                min-height: 0 !important;
+            }
+            body.printing-volantes .volante-col h4 {
+                font-size: 8px !important;
+                font-weight: bold !important;
+                text-align: center !important;
+                background: #e0e0e0 !important;
+                border: 1px solid #999 !important;
+                padding: 1mm !important;
+                margin: 0 0 1mm 0 !important;
+            }
+            body.printing-volantes .volante-row {
+                display: flex !important;
+                justify-content: space-between !important;
+                font-size: 7px !important;
+                padding: 0.5mm 1mm !important;
+                border-bottom: 1px dotted #ccc !important;
+            }
+            body.printing-volantes .volante-row:last-child {
+                border-bottom: none !important;
+            }
+            body.printing-volantes .volante-row.total-row {
+                border-top: 1px solid #000 !important;
+                border-bottom: none !important;
+                font-weight: bold !important;
+                padding-top: 1mm !important;
+                margin-top: 1mm !important;
+                background: #f0f0f0 !important;
+            }
+            body.printing-volantes .volante-row .monto {
+                font-family: 'Consolas', 'Courier New', monospace !important;
+                font-size: 7px !important;
+            }
+            
+            /* Detalle de ausencias */
+            body.printing-volantes .volante-ausencias-detalle {
+                font-size: 6px !important;
+                color: #333 !important;
+                border-bottom: none !important;
+                padding: 0 1mm !important;
+                margin-top: -1px !important;
+            }
+            body.printing-volantes .volante-ausencias-detalle span {
+                font-style: italic !important;
+            }
+            
+            /* Pie del volante: Firma + Neto */
+            body.printing-volantes .volante-footer {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 2mm !important;
+                margin-top: auto !important;
+                padding-top: 2mm !important;
+                border-top: 1px solid #000 !important;
+                flex-shrink: 0 !important;
+            }
+            body.printing-volantes .volante-neto {
+                background: #000 !important;
+                color: #fff !important;
+                text-align: center !important;
+                padding: 2mm !important;
+                border: 2px solid #000 !important;
+            }
+            body.printing-volantes .volante-neto label {
+                font-size: 7px !important;
+                display: block !important;
+                margin-bottom: 1mm !important;
+            }
+            body.printing-volantes .volante-neto .monto {
+                font-size: 14px !important;
+                font-weight: bold !important;
+                font-family: 'Consolas', 'Courier New', monospace !important;
+                color: #fff !important;
+            }
+            body.printing-volantes .volante-totales-ded {
+                display: flex !important;
+                justify-content: space-between !important;
+                font-size: 7px !important;
+                padding: 1mm !important;
+                background: #f5f5f5 !important;
+            }
+            body.printing-volantes .volante-totales-ded div {
+                display: flex !important;
+                gap: 2mm !important;
+            }
+            body.printing-volantes .volante-totales-ded .monto {
+                font-family: 'Consolas', 'Courier New', monospace !important;
+                font-weight: bold !important;
+            }
+            body.printing-volantes .volante-firma {
+                text-align: center !important;
+            }
+            body.printing-volantes .volante-firma-line {
+                border-bottom: 1px solid #000 !important;
+                height: 10mm !important;
+                margin-bottom: 1mm !important;
+            }
+            body.printing-volantes .volante-firma span {
+                font-size: 6px !important;
+                color: #333 !important;
             }
             
             /* ========== ESTILOS IMPRESIÓN CHECKLIST PAGOS POR BANCO ========== */
