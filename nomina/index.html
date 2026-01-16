@@ -3889,7 +3889,7 @@ const App = () => {
     return (
         <div className="app">
             {/* Pantalla de Login */}
-            {!usuarioActual ? (
+            {!usuarioActual && !paso2FA ? (
                 <div style={{
                     minHeight: '100vh',
                     display: 'flex',
