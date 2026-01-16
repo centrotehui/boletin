@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Nómina Tehui v3.90 - Protección de Datos</title>
+    <title>Sistema de Nómina Tehui v3.91 - Protección de Datos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -7388,7 +7388,7 @@ const App = () => {
                         </form>
 
                         <div className="footer-text-edu">
-                            Sistema Nómina Tehui v3.90 © 2026
+                            Sistema Nómina Tehui v3.91 © 2026
                         </div>
                     </div>
 
@@ -9781,6 +9781,26 @@ const App = () => {
                             <div className="alert alert-info">
                                 <Icons.Info />
                                 <span>El reporte comparativo estará disponible próximamente. Permitirá comparar dos períodos de nómina.</span>
+                            </div>
+                        )}
+                        
+                        {/* Mensaje cuando el reporte requiere nómina pero no hay una seleccionada */}
+                        {tipoReporteActivo && !currentNomina && CATEGORIAS_REPORTES.flatMap(c => c.reportes).find(r => r.id === tipoReporteActivo)?.requiereNomina && (
+                            <div className="alert alert-warning">
+                                <span>⚠️ <strong>Este reporte requiere una nómina seleccionada.</strong><br/>Por favor, seleccione una nómina procesada desde el selector en la parte superior o vuelva atrás y seleccione una nómina.</span>
+                            </div>
+                        )}
+                        
+                        {/* Mensaje para reportes no implementados */}
+                        {tipoReporteActivo && 
+                         !['nomina-depto', 'nomina-resumen', 'nomina-banco', 'tss', 'tss-resumen', 'isr', 
+                           'deducciones', 'ingresos', 'horas-extra', 'empleados', 'empleados-activos', 
+                           'empleados-depto', 'empleados-antiguedad', 'empleados-salarios', 'empleados-cumple', 
+                           'empleados-desvinculados', 'prestamos', 'prestamos-activos', 'prestamos-vencer', 
+                           'prestamos-historial', 'comparativo', 'comparativo-nominas', 'evolucion-salarios'].includes(tipoReporteActivo) && (
+                            <div className="alert alert-info">
+                                <Icons.Info />
+                                <span>Este reporte ({tipoReporteActivo}) está en desarrollo y estará disponible próximamente.</span>
                             </div>
                         )}
                     </div>
