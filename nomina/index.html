@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Nómina Tehui v3.94 - Protección de Datos</title>
+    <title>Sistema de Nómina Tehui v3.95 - Protección de Datos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -2382,7 +2382,7 @@ const SHAREPOINT_CONFIG = {
     clientId: '2133c50e-ffb4-4793-af2b-385d451b997b', // Client ID de Azure de Tehui
     authority: 'https://login.microsoftonline.com/tehui.onmicrosoft.com', // Tenant de Tehui
     redirectUri: 'https://centrotehui.github.io/boletin/nomina/index.html', // URI fijo registrado en Azure
-    scopes: ['User.Read', 'Sites.ReadWrite.All', 'Files.ReadWrite.All'],
+    scopes: ['User.Read', 'Sites.ReadWrite.All', 'Files.ReadWrite.All', 'Mail.Send'],
     siteName: 'SistemaBoletinTehui',
     siteUrl: 'tehui.sharepoint.com:/sites/SistemaNomina',
     listas: {
@@ -6526,42 +6526,192 @@ const App = () => {
         }, 100);
     };
     
-    // Funciones para envío de volantes por email
+    // Funciones para envío de volantes por email (Microsoft Graph)
+    const enviarCorreoGraph = async (destinatario, asunto, htmlBody) => {
+        try {
+            const token = await getAccessToken();
+            if (!token) {
+                throw new Error('No se pudo obtener token de acceso. Inicie sesión con Microsoft.');
+            }
+            
+            const mensaje = {
+                message: {
+                    subject: asunto,
+                    body: {
+                        contentType: 'HTML',
+                        content: htmlBody
+                    },
+                    toRecipients: [
+                        { emailAddress: { address: destinatario } }
+                    ]
+                },
+                saveToSentItems: true
+            };
+            
+            const response = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(mensaje)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `Error ${response.status}`);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Error enviando correo:', error);
+            throw error;
+        }
+    };
+    
+    const generarHTMLVolante = (emp, det, periodoTexto) => {
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #1565C0, #0D47A1); color: white; padding: 25px; text-align: center; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .header p { margin: 8px 0 0; opacity: 0.9; font-size: 14px; }
+        .periodo-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 8px 20px; border-radius: 20px; margin-top: 15px; font-weight: 600; }
+        .content { padding: 25px; }
+        .empleado-info { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #1565C0; }
+        .empleado-nombre { font-size: 18px; font-weight: 700; color: #1a1f24; margin-bottom: 5px; }
+        .empleado-datos { font-size: 13px; color: #5c6975; }
+        .tabla-detalle { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .tabla-detalle th { background: #e3f2fd; color: #1565C0; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
+        .tabla-detalle td { padding: 10px 12px; border-bottom: 1px solid #e0e4e8; font-size: 14px; }
+        .tabla-detalle tr:last-child td { border-bottom: none; }
+        .monto { text-align: right; font-family: 'Consolas', monospace; }
+        .seccion-titulo { font-weight: 700; color: #43A047; }
+        .seccion-titulo.deducciones { color: #E53935; }
+        .neto-row { background: linear-gradient(135deg, #43A047, #388E3C); color: white; }
+        .neto-row td { padding: 15px 12px; font-size: 16px; font-weight: 700; }
+        .banco-info { background: #fff3e0; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #FF9800; }
+        .banco-info h4 { margin: 0 0 10px; color: #e65100; font-size: 14px; }
+        .banco-dato { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+        .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 11px; color: #888; }
+        .footer img { max-height: 40px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 VOLANTE DE PAGO</h1>
+            <p>Centro Educativo Tehui</p>
+            <div class="periodo-badge">${periodoTexto}</div>
+        </div>
+        
+        <div class="content">
+            <div class="empleado-info">
+                <div class="empleado-nombre">${emp.nombre}</div>
+                <div class="empleado-datos">
+                    <span>📄 ${emp.documento || 'N/A'}</span> &nbsp;|&nbsp;
+                    <span>🏢 ${emp.departamento || 'N/A'}</span> &nbsp;|&nbsp;
+                    <span>💼 ${emp.cargo || 'N/A'}</span>
+                </div>
+            </div>
+            
+            <table class="tabla-detalle">
+                <thead>
+                    <tr>
+                        <th colspan="2">Detalle de Pagos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="seccion-titulo">💰 INGRESOS</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Salario Base</td>
+                        <td class="monto">RD$ ${formatMoney(det.salarioBase || 0)}</td>
+                    </tr>
+                    ${det.horasExtras > 0 ? `<tr><td>Horas Extras</td><td class="monto">RD$ ${formatMoney(det.horasExtras)}</td></tr>` : ''}
+                    ${det.bonificaciones > 0 ? `<tr><td>Bonificaciones</td><td class="monto">RD$ ${formatMoney(det.bonificaciones)}</td></tr>` : ''}
+                    ${det.incentivo > 0 ? `<tr><td>Incentivos</td><td class="monto">RD$ ${formatMoney(det.incentivo)}</td></tr>` : ''}
+                    <tr>
+                        <td><strong>Total Ingresos</strong></td>
+                        <td class="monto"><strong>RD$ ${formatMoney(det.totalIng || 0)}</strong></td>
+                    </tr>
+                    
+                    <tr>
+                        <td class="seccion-titulo deducciones">📉 DEDUCCIONES</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AFP (2.87%)</td>
+                        <td class="monto">RD$ ${formatMoney(det.afp || 0)}</td>
+                    </tr>
+                    <tr>
+                        <td>SFS (3.04%)</td>
+                        <td class="monto">RD$ ${formatMoney(det.sfs || 0)}</td>
+                    </tr>
+                    ${det.isr > 0 ? `<tr><td>ISR</td><td class="monto">RD$ ${formatMoney(det.isr)}</td></tr>` : ''}
+                    ${det.cooperativa > 0 ? `<tr><td>Cooperativa</td><td class="monto">RD$ ${formatMoney(det.cooperativa)}</td></tr>` : ''}
+                    ${det.prestamos > 0 ? `<tr><td>Préstamos</td><td class="monto">RD$ ${formatMoney(det.prestamos)}</td></tr>` : ''}
+                    ${det.otrasDeducc > 0 ? `<tr><td>Otras Deducciones</td><td class="monto">RD$ ${formatMoney(det.otrasDeducc)}</td></tr>` : ''}
+                    <tr>
+                        <td><strong>Total Deducciones</strong></td>
+                        <td class="monto"><strong>RD$ ${formatMoney(det.totalDed || 0)}</strong></td>
+                    </tr>
+                    
+                    <tr class="neto-row">
+                        <td>✅ NETO A RECIBIR</td>
+                        <td class="monto">RD$ ${formatMoney(det.neto || 0)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            ${emp.banco ? `
+            <div class="banco-info">
+                <h4>🏦 Información de Depósito</h4>
+                <div class="banco-dato"><span>Banco:</span><strong>${emp.banco}</strong></div>
+                <div class="banco-dato"><span>No. Cuenta:</span><strong>${emp.cuenta || 'N/A'}</strong></div>
+            </div>
+            ` : ''}
+        </div>
+        
+        <div class="footer">
+            <p><strong>Centro Educativo Tehui</strong></p>
+            <p>Educando en valores con calidad</p>
+            <p style="margin-top: 10px; font-size: 10px;">Este es un documento informativo generado automáticamente.<br>Fecha de emisión: ${new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+    </div>
+</body>
+</html>`;
+    };
+    
     const enviarVolanteEmail = async (emp, det) => {
         if (!emp.email) {
             toast(`${emp.nombre} no tiene email registrado`, 'error');
             return false;
         }
         
+        // Verificar que esté conectado a Microsoft
+        if (!msUser) {
+            toast('Debe iniciar sesión con Microsoft para enviar correos', 'warning');
+            return false;
+        }
+        
         setEnviandoVolante(emp.id);
         
         try {
-            // Preparar datos para el template
             const periodoTexto = currentNomina ? 
                 `${MESES[currentNomina.periodo.mes]} ${currentNomina.periodo.año}${currentNomina.periodo.tipo === 'quincenal' ? ` - ${currentNomina.periodo.quincena === 1 ? '1ra' : '2da'} Quincena` : ''}` : '';
             
-            const templateParams = {
-                to_email: emp.email,
-                to_name: emp.nombre.split(',')[0] || emp.nombre,
-                empresa: config.nombreEmpresa || 'Centro Educativo Tehui',
-                periodo: periodoTexto,
-                nomina_codigo: currentNomina?.codigo || '',
-                empleado_nombre: emp.nombre,
-                empleado_cedula: emp.documento || '',
-                empleado_departamento: emp.departamento || '',
-                salario_base: formatMoney(det.salarioBase || 0),
-                total_ingresos: formatMoney(det.totalIng || 0),
-                afp: formatMoney(det.afp || 0),
-                sfs: formatMoney(det.sfs || 0),
-                isr: formatMoney(det.isr || 0),
-                total_deducciones: formatMoney(det.totalDed || 0),
-                neto_pagar: formatMoney(det.neto || 0),
-                banco: emp.banco || 'N/A',
-                cuenta: emp.cuenta || 'N/A',
-                fecha_envio: new Date().toLocaleDateString('es-DO')
-            };
+            const asunto = `📋 Volante de Pago - ${periodoTexto} | Centro Educativo Tehui`;
+            const htmlBody = generarHTMLVolante(emp, det, periodoTexto);
             
-            await emailjs.send('service_1944u1j', 'template_volante_pago', templateParams);
+            await enviarCorreoGraph(emp.email, asunto, htmlBody);
             
             // Marcar como enviado
             const nominaCodigo = currentNomina?.codigo;
@@ -6575,12 +6725,12 @@ const App = () => {
                 }));
             }
             
-            toast(`Volante enviado a ${emp.email}`, 'success');
+            toast(`✉️ Volante enviado a ${emp.email}`, 'success');
             setEnviandoVolante(null);
             return true;
         } catch (error) {
             console.error('Error enviando volante:', error);
-            toast(`Error enviando email: ${error.text || error.message || 'Error desconocido'}`, 'error');
+            toast(`Error: ${error.message || 'No se pudo enviar el correo'}`, 'error');
             setEnviandoVolante(null);
             return false;
         }
@@ -6589,13 +6739,19 @@ const App = () => {
     const enviarTodosVolantes = async () => {
         if (!volantesData || volantesData.length === 0) return;
         
+        // Verificar conexión a Microsoft
+        if (!msUser) {
+            toast('Debe iniciar sesión con Microsoft para enviar correos', 'warning');
+            return;
+        }
+        
         const conEmail = volantesData.filter(v => v.emp.email);
         if (conEmail.length === 0) {
             toast('Ningún empleado tiene email registrado', 'warning');
             return;
         }
         
-        if (!confirm(`¿Enviar volante por email a ${conEmail.length} empleados?`)) return;
+        if (!confirm(`¿Enviar volante por email a ${conEmail.length} empleados?\n\nLos correos se enviarán desde: ${msUser.username}`)) return;
         
         let enviados = 0;
         let errores = 0;
@@ -6605,7 +6761,7 @@ const App = () => {
             if (resultado) enviados++;
             else errores++;
             // Pequeña pausa entre envíos para evitar rate limiting
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 800));
         }
         
         toast(`Envío completado: ${enviados} exitosos, ${errores} fallidos`, enviados > 0 ? 'success' : 'error');
@@ -7798,7 +7954,7 @@ const App = () => {
                         </form>
 
                         <div className="footer-text-edu">
-                            Sistema Nómina Tehui v3.94 © 2026
+                            Sistema Nómina Tehui v3.95 © 2026
                         </div>
                     </div>
 
@@ -8900,13 +9056,13 @@ const App = () => {
             </Modal>
 
             {/* Modal Volantes */}
-            <Modal open={modals.volantes} onClose={() => { closeModal('volantes'); setSelectedVolante(null); }} title="Volantes de Pago" size="xl" footer={<><button className="btn btn-secondary" onClick={() => closeModal('volantes')}>Cerrar</button><button className="btn btn-info" onClick={enviarTodosVolantes}><Icons.Mail /> Enviar a Todos</button><button className="btn btn-primary" onClick={imprimirVolantes}><Icons.Printer /> Imprimir</button></>}>
+            <Modal open={modals.volantes} onClose={() => { closeModal('volantes'); setSelectedVolante(null); }} title="Volantes de Pago" size="xl" footer={<><button className="btn btn-secondary" onClick={() => closeModal('volantes')}>Cerrar</button><button className="btn btn-info" onClick={enviarTodosVolantes} disabled={!msUser} title={msUser ? 'Enviar volantes a todos los empleados con email' : 'Inicie sesión con Microsoft para enviar correos'}><Icons.Mail /> Enviar a Todos</button><button className="btn btn-primary" onClick={imprimirVolantes}><Icons.Printer /> Imprimir</button></>}>
                 {/* Panel de envío por email */}
                 <div className="no-print" style={{marginBottom:'16px', padding:'12px', background:'#f0f9ff', border:'1px solid #0ea5e9', borderRadius:'8px'}}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
                         <div>
-                            <strong style={{color:'#0369a1'}}>📧 Envío de Volantes por Email</strong>
-                            <p style={{fontSize:'11px', color:'#64748b', margin:'4px 0 0'}}>Envíe los volantes de pago directamente al correo de cada empleado</p>
+                            <strong style={{color:'#0369a1'}}>📧 Envío de Volantes por Email (Microsoft 365)</strong>
+                            <p style={{fontSize:'11px', color:'#64748b', margin:'4px 0 0'}}>Los correos se envían desde su cuenta institucional de Microsoft</p>
                         </div>
                         <div style={{fontSize:'12px'}}>
                             <span style={{background:'#22c55e', color:'white', padding:'2px 8px', borderRadius:'12px', marginRight:'8px'}}>
@@ -8946,7 +9102,7 @@ const App = () => {
                                             )}
                                         </td>
                                         <td style={{padding:'6px 8px', textAlign:'center'}}>
-                                            {v.emp.email && !isVolanteEnviado(v.emp.id) && (
+                                            {v.emp.email && !isVolanteEnviado(v.emp.id) && msUser && (
                                                 <button 
                                                     className="btn btn-xs btn-info" 
                                                     onClick={() => enviarVolanteEmail(v.emp, v.det)}
@@ -8956,7 +9112,7 @@ const App = () => {
                                                     {enviandoVolante === v.emp.id ? '⏳' : '📧'} Enviar
                                                 </button>
                                             )}
-                                            {isVolanteEnviado(v.emp.id) && (
+                                            {isVolanteEnviado(v.emp.id) && msUser && (
                                                 <button 
                                                     className="btn btn-xs btn-secondary" 
                                                     onClick={() => enviarVolanteEmail(v.emp, v.det)}
@@ -8966,6 +9122,9 @@ const App = () => {
                                                     {enviandoVolante === v.emp.id ? '⏳' : '🔄'} Reenviar
                                                 </button>
                                             )}
+                                            {v.emp.email && !msUser && (
+                                                <span style={{fontSize:'9px', color:'#94a3b8'}}>Requiere MS</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -8973,7 +9132,11 @@ const App = () => {
                         </table>
                     </div>
                     <div style={{marginTop:'8px', fontSize:'10px', color:'#64748b'}}>
-                        💡 <strong>Nota:</strong> Debe crear el template <code>template_volante_pago</code> en EmailJS con las variables: to_email, to_name, empresa, periodo, empleado_nombre, salario_base, total_ingresos, total_deducciones, neto_pagar, banco, cuenta.
+                        {msUser ? (
+                            <span>✅ Conectado como <strong>{msUser.username}</strong> - Los correos se enviarán desde esta cuenta de Microsoft 365</span>
+                        ) : (
+                            <span style={{color:'#dc2626'}}>⚠️ <strong>Debe iniciar sesión con Microsoft</strong> (botón ☁️ en la barra lateral) para enviar correos desde el workspace institucional</span>
+                        )}
                     </div>
                 </div>
                 
